@@ -6,13 +6,18 @@
 #include <cctype>
 using namespace std;
 
-inline vector<string> tokenize(const string& text, const unordered_set<string>& stopwords) {
+inline vector<string> tokenize(const string &text, const unordered_set<string> &stopwords)
+{
     string s = text;
     // Lowercase and remove digits
-    for (char& c : s) {
-        if (isdigit(c)) {
+    for (char &c : s)
+    {
+        if (isdigit(c))
+        {
             c = ' ';
-        } else {
+        }
+        else
+        {
             c = tolower(c);
         }
     }
@@ -21,8 +26,10 @@ inline vector<string> tokenize(const string& text, const unordered_set<string>& 
     vector<string> tokens;
     istringstream iss(s);
     string token;
-    while (iss >> token) {
-        if (!stopwords.count(token) && !token.empty()) {
+    while (iss >> token)
+    {
+        if (!stopwords.count(token) && !token.empty())
+        {
             tokens.push_back(token);
         }
     }
