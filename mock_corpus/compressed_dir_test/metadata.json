@@ -1,0 +1,98 @@
+{
+  "#": {
+    "offset": 0,
+    "length": 4
+  },
+  "$": {
+    "offset": 4,
+    "length": 4
+  },
+  "-": {
+    "offset": 8,
+    "length": 4
+  },
+  "co-op": {
+    "offset": 12,
+    "length": 4
+  },
+  "coronavirus": {
+    "offset": 16,
+    "length": 4
+  },
+  "covid": {
+    "offset": 20,
+    "length": 4
+  },
+  "debated": {
+    "offset": 24,
+    "length": 4
+  },
+  "delhi": {
+    "offset": 28,
+    "length": 4
+  },
+  "fun": {
+    "offset": 32,
+    "length": 4
+  },
+  "iit": {
+    "offset": 36,
+    "length": 4
+  },
+  "in": {
+    "offset": 40,
+    "length": 4
+  },
+  "information": {
+    "offset": 44,
+    "length": 7
+  },
+  "off": {
+    "offset": 51,
+    "length": 4
+  },
+  "origin": {
+    "offset": 55,
+    "length": 4
+  },
+  "originated": {
+    "offset": 59,
+    "length": 4
+  },
+  "people": {
+    "offset": 63,
+    "length": 4
+  },
+  "reopens": {
+    "offset": 67,
+    "length": 4
+  },
+  "retrieval": {
+    "offset": 71,
+    "length": 7
+  },
+  "room-": {
+    "offset": 78,
+    "length": 4
+  },
+  "some": {
+    "offset": 82,
+    "length": 4
+  },
+  "study": {
+    "offset": 86,
+    "length": 4
+  },
+  "today!": {
+    "offset": 90,
+    "length": 4
+  },
+  "widely": {
+    "offset": 94,
+    "length": 4
+  },
+  "wuhan": {
+    "offset": 98,
+    "length": 4
+  }
+}
