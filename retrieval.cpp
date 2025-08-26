@@ -8,8 +8,12 @@
 #include <algorithm>
 #include <unordered_set>
 #include "tokenizer.h"
+#include "query_processor.h"
+#include <stack>
 
 using namespace std;
+
+vector<string> global_all_docs; // Global vector to store all document names
 
 // Variable-byte decoding function
 uint32_t decode_vbyte(const vector<uint8_t>& data, size_t& pos) {
@@ -221,6 +225,10 @@ map<string, map<string, vector<uint32_t>>> decompress_index(const string& compre
     doc_map_file.close();
     vector<string> doc_map = parse_doc_map(doc_map_content);
     
+    //Initialize global_all_docs
+    global_all_docs = doc_map;
+    sort(global_all_docs.begin(), global_all_docs.end());
+
     // Load metadata.json
     ifstream metadata_file(compressed_dir + "/metadata.json");
     if (!metadata_file.is_open()) {
@@ -330,6 +338,145 @@ map<string, map<string, vector<uint32_t>>> decompress_index(const string& compre
     return index;
 }
 
+//get_precedence function for QueryProcessor
+int QueryProcessor::get_precedence(const string& op) {
+    if (op == "NOT") return 3;
+    if (op == "AND") return 2;
+    if (op == "OR") return 1;
+    return 0; // For terms and parentheses
+}
+
+//infix_to_postfix function for QueryProcessor
+vector<string> QueryProcessor::infix_to_postfix(const vector<string>& tokens) {
+    vector<string> postfix;
+    stack<string> operators;
+    
+    for (const auto& token : tokens) {
+        if (!is_operator(token) && !is_parenthesis(token)) {
+            // Term - add to output
+            postfix.push_back(token);
+        }
+        else if (token == "(") {
+            operators.push(token);
+        }
+        else if (token == ")") {
+            while (!operators.empty() && operators.top() != "(") {
+                postfix.push_back(operators.top());
+                operators.pop();
+            }
+            if (!operators.empty()) operators.pop(); // Remove "("
+        }
+        else {
+            // Operator
+            while (!operators.empty() && operators.top() != "(" && 
+                   get_precedence(operators.top()) >= get_precedence(token)) {
+                postfix.push_back(operators.top());
+                operators.pop();
+            }
+            operators.push(token);
+        }
+    }
+    
+    while (!operators.empty()) {
+        postfix.push_back(operators.top());
+        operators.pop();
+    }
+    
+    return postfix;
+}
+
+//build_tree function for QueryProcessor
+QueryNode* QueryProcessor::build_tree(const vector<string>& postfix) {
+    stack<QueryNode*> node_stack;
+    
+    for (const auto& token : postfix) {
+        if (!is_operator(token)) {
+            // Term - create leaf node
+            node_stack.push(new QueryNode(token));
+        } else {
+            // Operator - pop nodes and create internal node
+            QueryNode* node = new QueryNode(token);
+            if (token == "NOT") {
+                if (!node_stack.empty()) {
+                    node->right = node_stack.top();
+                    node_stack.pop();
+                }
+            } else {
+                if (!node_stack.empty()) {
+                    node->right = node_stack.top();
+                    node_stack.pop();
+                }
+                if (!node_stack.empty()) {
+                    node->left = node_stack.top();
+                    node_stack.pop();
+                }
+            }
+            node_stack.push(node);
+        }
+    }
+    
+    return node_stack.empty() ? nullptr : node_stack.top();
+}
+
+//evaluate_tree function for QueryProcessor
+vector<string> QueryProcessor::evaluate_tree(QueryNode* root, 
+    const map<string, map<string, vector<uint32_t>>>& index) {
+    
+    if (!root) return {};
+    
+    if (!is_operator(root->value)) {
+        // Leaf node (term)
+        auto it = index.find(root->value);
+        if (it != index.end()) {
+            vector<string> docs;
+            for (const auto& doc_entry : it->second) {
+                docs.push_back(doc_entry.first);
+            }
+            sort(docs.begin(), docs.end());
+            return docs;
+        } else {
+            return {}; // Term not found
+        }
+    }
+    
+    // Internal node (operator)
+    vector<string> left_result = evaluate_tree(root->left, index);
+    vector<string> right_result = evaluate_tree(root->right, index);
+    
+    if (root->value == "AND") {
+        vector<string> result;
+        set_intersection(left_result.begin(), left_result.end(),
+                         right_result.begin(), right_result.end(),
+                         back_inserter(result));
+        return result;
+    } else if (root->value == "OR") {
+        vector<string> result;
+        set_union(left_result.begin(), left_result.end(),
+                  right_result.begin(), right_result.end(),
+                  back_inserter(result));
+        return result;
+    } else if (root->value == "NOT") {
+        // NOT operator - only right child is relevant
+
+        vector<string> result;
+        set_difference(global_all_docs.begin(), global_all_docs.end(),
+                       right_result.begin(), right_result.end(),
+                       back_inserter(result));
+        return result;
+    }
+    
+    return {};
+}
+
+void print_tree(QueryNode* node, int depth=0) {
+    if (!node) return;
+    print_tree(node->right, depth+1);
+    for(int i=0;i<depth;i++) cout<<"    ";
+    cout << node->value << "\n";
+    print_tree(node->left, depth+1);
+}
+
+
 // Test function for Task 4.1 and 4.2
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -368,13 +515,41 @@ int main(int argc, char* argv[]) {
         }
         
         vector<string> processed = preprocess_query(test_query, stopwords);
-        
+
+        // Convert processed tokens to postfix and build tree
+        vector<string> postfix = QueryProcessor::infix_to_postfix(processed);
+        QueryNode* root = QueryProcessor::build_tree(postfix);
+
+        //Evaluate the query tree
+        vector<string> results = QueryProcessor::evaluate_tree(root, index);
+
+        //Print the query tree for debugging
         cout << "Processed tokens: [";
         for (size_t i = 0; i < processed.size(); i++) {
             if (i > 0) cout << ", ";
             cout << "\"" << processed[i] << "\"";
         }
         cout << "]" << endl;
+
+        cout << "\nQuery results: [";
+        for (size_t i = 0; i < results.size(); i++) {
+            if (i > 0) cout << ", ";
+            cout << "\"" << results[i] << "\"";
+        }
+        cout << "]" << endl;
+
+        cout << "\nPostfix notation: [";
+        for (size_t i = 0; i < postfix.size(); i++) {
+            if (i > 0) cout << ", ";
+            cout << "\"" << postfix[i] << "\"";
+        }
+        cout << "]\n\n";
+
+        cout << "Query Tree Structure:\n";
+        print_tree(root);
+        cout << "\n";
+
+        delete root; // Free the query tree
     }
     
     return 0;
