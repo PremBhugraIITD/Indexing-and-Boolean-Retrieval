@@ -7,6 +7,7 @@
 #include <sstream>
 #include <algorithm>
 #include <unordered_set>
+#include <set>
 #include "tokenizer.h"
 #include "query_processor.h"
 #include <stack>
@@ -628,14 +629,302 @@ void print_tree(QueryNode *node, int depth = 0)
     print_tree(node->left, depth + 1);
 }
 
-// Test function for Task 4.1 and 4.2
+// Helper function to load stopwords with fallback paths
+unordered_set<string> load_stopwords_with_fallback(const string &output_dir)
+{
+    unordered_set<string> stopwords;
+    
+    // Try output_dir/../stopwords.txt first
+    string primary_path = output_dir + "/../stopwords.txt";
+    ifstream file(primary_path);
+    
+    if (!file.is_open())
+    {
+        // Fallback to ./stopwords.txt
+        file.open("./stopwords.txt");
+        if (!file.is_open())
+        {
+            file.open("stopwords.txt");
+        }
+    }
+    
+    if (file.is_open())
+    {
+        string word;
+        while (getline(file, word))
+        {
+            // Lowercase the stopword
+            transform(word.begin(), word.end(), word.begin(), ::tolower);
+            // Remove any trailing whitespace
+            word.erase(word.find_last_not_of(" \t\r\n") + 1);
+            if (!word.empty())
+            {
+                stopwords.insert(word);
+            }
+        }
+        file.close();
+    }
+    
+    return stopwords;
+}
+
+// Helper function to parse queries from JSON file
+vector<pair<string, string>> parse_queries_file(const string &path_to_query_file)
+{
+    vector<pair<string, string>> queries; // (qid, title) pairs
+    ifstream file(path_to_query_file);
+    
+    if (!file.is_open())
+    {
+        cerr << "Warning: Cannot open query file: " << path_to_query_file << endl;
+        return queries;
+    }
+    
+    string line;
+    while (getline(file, line))
+    {
+        // Remove leading/trailing whitespace
+        line.erase(0, line.find_first_not_of(" \t"));
+        line.erase(line.find_last_not_of(" \t") + 1);
+        
+        if (line.empty() || line[0] != '{')
+            continue;
+            
+        string qid, title;
+        bool has_qid = false, has_title = false;
+        
+        // Simple JSON parsing for qid and title
+        size_t pos = 0;
+        while (pos < line.length())
+        {
+            // Look for "query_id" field
+            size_t qid_pos = line.find("\"query_id\"", pos);
+            if (qid_pos != string::npos)
+            {
+                size_t colon_pos = line.find(":", qid_pos);
+                if (colon_pos != string::npos)
+                {
+                    size_t value_start = line.find("\"", colon_pos);
+                    if (value_start != string::npos)
+                    {
+                        value_start++;
+                        size_t value_end = line.find("\"", value_start);
+                        if (value_end != string::npos)
+                        {
+                            qid = line.substr(value_start, value_end - value_start);
+                            has_qid = true;
+                        }
+                    }
+                }
+            }
+            
+            // Look for "title" field
+            size_t title_pos = line.find("\"title\"", pos);
+            if (title_pos != string::npos)
+            {
+                size_t colon_pos = line.find(":", title_pos);
+                if (colon_pos != string::npos)
+                {
+                    size_t value_start = line.find("\"", colon_pos);
+                    if (value_start != string::npos)
+                    {
+                        value_start++;
+                        size_t value_end = line.find("\"", value_start);
+                        if (value_end != string::npos)
+                        {
+                            title = line.substr(value_start, value_end - value_start);
+                            has_title = true;
+                        }
+                    }
+                }
+            }
+            
+            if (has_qid && has_title)
+                break;
+                
+            pos = max(qid_pos, title_pos);
+            if (pos == string::npos)
+                break;
+            pos++;
+        }
+        
+        if (has_qid && has_title)
+        {
+            queries.push_back(make_pair(qid, title));
+        }
+        else if (has_qid && !has_title)
+        {
+            cerr << "Warning: Query " << qid << " missing title field, skipping." << endl;
+        }
+    }
+    
+    file.close();
+    return queries;
+}
+
+// Helper function to evaluate query tree using postings map
+vector<string> evaluate_tree_with_postings(QueryNode *root,
+                                          const map<string, vector<string>> &postings_map,
+                                          const vector<string> &universe)
+{
+    if (!root)
+        return {};
+        
+    if (!is_operator(root->value))
+    {
+        // Leaf node (term)
+        auto it = postings_map.find(root->value);
+        if (it != postings_map.end())
+        {
+            return it->second; // Already sorted
+        }
+        else
+        {
+            return {}; // Term not found, return empty set
+        }
+    }
+    
+    // Internal node (operator)
+    vector<string> left_result = evaluate_tree_with_postings(root->left, postings_map, universe);
+    vector<string> right_result = evaluate_tree_with_postings(root->right, postings_map, universe);
+    
+    if (root->value == "AND")
+    {
+        vector<string> result;
+        set_intersection(left_result.begin(), left_result.end(),
+                         right_result.begin(), right_result.end(),
+                         back_inserter(result));
+        return result;
+    }
+    else if (root->value == "OR")
+    {
+        vector<string> result;
+        set_union(left_result.begin(), left_result.end(),
+                  right_result.begin(), right_result.end(),
+                  back_inserter(result));
+        return result;
+    }
+    else if (root->value == "NOT")
+    {
+        // NOT operator - universe minus right operand
+        vector<string> result;
+        set_difference(universe.begin(), universe.end(),
+                       right_result.begin(), right_result.end(),
+                       back_inserter(result));
+        return result;
+    }
+    
+    return {};
+}
+
+// Main boolean retrieval function
+void boolean_retrieval(
+    const map<string, map<string, vector<uint32_t>>> &inverted_index,
+    const string &path_to_query_file,
+    const string &output_dir)
+{
+    // Load stopwords
+    unordered_set<string> stopwords = load_stopwords_with_fallback(output_dir);
+    
+    // Load queries
+    vector<pair<string, string>> queries = parse_queries_file(path_to_query_file);
+    if (queries.empty())
+    {
+        cerr << "No valid queries found in file: " << path_to_query_file << endl;
+        return;
+    }
+    
+    // Build postings_map: term → sorted vector<string> of docIDs
+    map<string, vector<string>> postings_map;
+    set<string> all_docs_set;
+    
+    for (const auto &term_entry : inverted_index)
+    {
+        const string &term = term_entry.first;
+        vector<string> docs;
+        
+        for (const auto &doc_entry : term_entry.second)
+        {
+            docs.push_back(doc_entry.first);
+            all_docs_set.insert(doc_entry.first);
+        }
+        
+        sort(docs.begin(), docs.end());
+        postings_map[term] = docs;
+    }
+    
+    // Build universe: sorted vector<string> of all docIDs
+    vector<string> universe(all_docs_set.begin(), all_docs_set.end());
+    sort(universe.begin(), universe.end());
+    
+    // Create output directory if it doesn't exist
+    // Note: Using simple approach since we can't use filesystem library
+    
+    // Open output file
+    string output_file_path = output_dir + "/docids.txt";
+    ofstream output_file(output_file_path);
+    if (!output_file.is_open())
+    {
+        cerr << "Error: Cannot create output file: " << output_file_path << endl;
+        return;
+    }
+    
+    // Process each query
+    for (const auto &query_pair : queries)
+    {
+        const string &qid = query_pair.first;
+        const string &title = query_pair.second;
+        
+        // Preprocess query
+        vector<string> processed = preprocess_query(title, stopwords);
+        if (processed.empty())
+        {
+            continue; // Skip empty queries
+        }
+        
+        // Convert to postfix
+        vector<string> postfix = QueryProcessor::infix_to_postfix(processed);
+        
+        // Build tree
+        QueryNode *root = QueryProcessor::build_tree(postfix);
+        if (root == nullptr)
+        {
+            cerr << "Warning: Failed to parse query " << qid << ": \"" << title << "\", skipping." << endl;
+            continue;
+        }
+        
+        // Evaluate query
+        vector<string> results = evaluate_tree_with_postings(root, postings_map, universe);
+        
+        // Sort results lexicographically (should already be sorted from set operations)
+        sort(results.begin(), results.end());
+        
+        // Write 4-column format output: qid docid rank score
+        for (size_t i = 0; i < results.size(); i++)
+        {
+            int rank = i + 1; // 1-based ranking
+            output_file << qid << " " << results[i] << " " << rank << " 1" << endl;
+        }
+        
+        // Clean up tree
+        delete root;
+    }
+    
+    output_file.close();
+    cout << "Boolean retrieval completed. Results written to: " << output_file_path << endl;
+}
+
+// Test function for Task 4.1, 4.2, 4.3, and 4.4
 int main(int argc, char *argv[])
 {
     if (argc < 2)
     {
         cerr << "Usage: " << argv[0] << " <compressed_dir> [test_query]" << endl;
+        cerr << "       " << argv[0] << " <compressed_dir> --batch <query_file> [output_dir]" << endl;
         cerr << "Example: " << argv[0] << " mock_corpus/compressed_dir_test" << endl;
         cerr << "Example: " << argv[0] << " mock_corpus/compressed_dir_test \"jaguar NOT car\"" << endl;
+        cerr << "Example: " << argv[0] << " mock_corpus/compressed_dir_test --batch test_queries.json" << endl;
+        cerr << "Example: " << argv[0] << " mock_corpus/compressed_dir_test --batch test_queries.json custom_output" << endl;
         return 1;
     }
 
@@ -651,7 +940,7 @@ int main(int argc, char *argv[])
     cout << "Decompressed index saved to: " << compressed_dir << "/decompressed_index.json" << endl;
 
     // Task 4.2: Test query preprocessing (if query provided)
-    if (argc >= 3)
+    if (argc >= 3 && string(argv[2]) != "--batch")
     {
         cout << "\n=== Task 4.2: Query Preprocessing ===" << endl;
         string test_query = argv[2];
@@ -718,6 +1007,18 @@ int main(int argc, char *argv[])
         cout << "\n";
 
         delete root; // Free the query tree
+    }
+    // Task 4.4: Boolean retrieval batch processing
+    else if ((argc == 4 || argc == 5) && string(argv[2]) == "--batch")
+    {
+        cout << "\n=== Task 4.4: Boolean Retrieval ===" << endl;
+        string query_file = argv[3];
+        string output_dir = (argc == 5) ? argv[4] : "mock_corpus";
+        
+        cout << "Processing queries from: " << query_file << endl;
+        cout << "Output directory: " << output_dir << endl;
+        
+        boolean_retrieval(index, query_file, output_dir);
     }
 
     return 0;
