@@ -56,16 +56,16 @@ vector<string> get_files_in_directory(const string& directory) {
     vector<string> files;
     
 #ifdef _WIN32
-    WIN32_FIND_DATA findFileData;
+    WIN32_FIND_DATAA findFileData;  // Use ASCII version explicitly
     string searchPath = directory + "\\*";
-    HANDLE hFind = FindFirstFile(searchPath.c_str(), &findFileData);
+    HANDLE hFind = FindFirstFileA(searchPath.c_str(), &findFileData);  // Use ASCII version
     
     if (hFind != INVALID_HANDLE_VALUE) {
         do {
             if (!(findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
                 files.push_back(directory + "/" + findFileData.cFileName);
             }
-        } while (FindNextFile(hFind, &findFileData) != 0);
+        } while (FindNextFileA(hFind, &findFileData) != 0);  // Use ASCII version
         FindClose(hFind);
     }
 #else
