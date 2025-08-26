@@ -12,22 +12,22 @@
     "docA.txt": [0]
   },
   "coronavirus": {
-    "doc2.txt": [2]
+    "doc2.txt": [1]
   },
   "covid": {
     "doc1.txt": [0]
   },
   "debated": {
-    "doc2.txt": [5]
+    "doc2.txt": [3]
   },
   "delhi": {
-    "docB.txt": [5]
+    "docB.txt": [4]
   },
   "fun": {
-    "docB.txt": [3]
+    "docB.txt": [2]
   },
   "iit": {
-    "docB.txt": [4]
+    "docB.txt": [3]
   },
   "in": {
     "doc1.txt": [2]
@@ -68,7 +68,7 @@
     "docA.txt": [7]
   },
   "widely": {
-    "doc2.txt": [4]
+    "doc2.txt": [2]
   },
   "wuhan": {
     "doc1.txt": [3]
