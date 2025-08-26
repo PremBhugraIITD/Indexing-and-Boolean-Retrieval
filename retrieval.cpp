@@ -6,6 +6,8 @@
 #include <cstdint>
 #include <sstream>
 #include <algorithm>
+#include <unordered_set>
+#include "tokenizer.h"
 
 using namespace std;
 
@@ -101,6 +103,107 @@ string escape_json_string(const string& s) {
             default: result += c; break;
         }
     }
+    return result;
+}
+
+// Helper function to check if a token is a Boolean operator
+bool is_operator(const string& token) {
+    string upper_token = token;
+    transform(upper_token.begin(), upper_token.end(), upper_token.begin(), ::toupper);
+    return upper_token == "AND" || upper_token == "OR" || upper_token == "NOT";
+}
+
+// Helper function to check if a token is a parenthesis
+bool is_parenthesis(const string& token) {
+    return token == "(" || token == ")";
+}
+
+// Helper function to check if a token is a term (not operator or parenthesis)
+bool is_term(const string& token) {
+    return !is_operator(token) && !is_parenthesis(token);
+}
+
+// Query preprocessing function for Task 4.2
+vector<string> preprocess_query(const string &title, const unordered_set<string> &stopwords) {
+    if (title.empty()) {
+        return vector<string>();
+    }
+    
+    // Step 1: Add spaces around parentheses
+    string modified_title = title;
+    
+    // Replace ( with " ( "
+    size_t pos = 0;
+    while ((pos = modified_title.find('(', pos)) != string::npos) {
+        modified_title.replace(pos, 1, " ( ");
+        pos += 3;
+    }
+    
+    // Replace ) with " ) "
+    pos = 0;
+    while ((pos = modified_title.find(')', pos)) != string::npos) {
+        modified_title.replace(pos, 1, " ) ");
+        pos += 3;
+    }
+    
+    // Step 2: Tokenize using existing tokenizer
+    vector<string> tokens = tokenize(modified_title, stopwords);
+    
+    if (tokens.empty()) {
+        return vector<string>();
+    }
+    
+    // Step 3: Canonicalize operators (convert to uppercase)
+    for (string& token : tokens) {
+        string upper_token = token;
+        transform(upper_token.begin(), upper_token.end(), upper_token.begin(), ::toupper);
+        
+        if (upper_token == "AND" || upper_token == "OR" || upper_token == "NOT") {
+            token = upper_token;
+        }
+        // Parentheses remain as-is: "(" and ")"
+    }
+    
+    // Step 4: Insert implicit AND operators
+    vector<string> result;
+    
+    for (size_t i = 0; i < tokens.size(); i++) {
+        result.push_back(tokens[i]);
+        
+        // Check if we need to insert AND after current token
+        if (i + 1 < tokens.size()) {
+            const string& current = tokens[i];
+            const string& next = tokens[i + 1];
+            
+            bool insert_and = false;
+            
+            // Case 1: term term
+            if (is_term(current) && is_term(next)) {
+                insert_and = true;
+            }
+            // Case 2: term (
+            else if (is_term(current) && next == "(") {
+                insert_and = true;
+            }
+            // Case 3: ) term
+            else if (current == ")" && is_term(next)) {
+                insert_and = true;
+            }
+            // Case 4: ) (
+            else if (current == ")" && next == "(") {
+                insert_and = true;
+            }
+            // Case 5: term NOT
+            else if (is_term(current) && next == "NOT") {
+                insert_and = true;
+            }
+            
+            if (insert_and) {
+                result.push_back("AND");
+            }
+        }
+    }
+    
     return result;
 }
 
@@ -227,21 +330,52 @@ map<string, map<string, vector<uint32_t>>> decompress_index(const string& compre
     return index;
 }
 
-// Test function for Task 4.1
+// Test function for Task 4.1 and 4.2
 int main(int argc, char* argv[]) {
-    if (argc != 2) {
-        cerr << "Usage: " << argv[0] << " <compressed_dir>" << endl;
+    if (argc < 2) {
+        cerr << "Usage: " << argv[0] << " <compressed_dir> [test_query]" << endl;
         cerr << "Example: " << argv[0] << " mock_corpus/compressed_dir_test" << endl;
+        cerr << "Example: " << argv[0] << " mock_corpus/compressed_dir_test \"jaguar NOT car\"" << endl;
         return 1;
     }
     
     string compressed_dir = argv[1];
+    
+    // Task 4.1: Test decompression
+    cout << "=== Task 4.1: Decompression ===" << endl;
     cout << "Decompressing index from: " << compressed_dir << endl;
     
     auto index = decompress_index(compressed_dir);
     
     cout << "Decompressed index with " << index.size() << " terms." << endl;
     cout << "Decompressed index saved to: " << compressed_dir << "/decompressed_index.json" << endl;
+    
+    // Task 4.2: Test query preprocessing (if query provided)
+    if (argc >= 3) {
+        cout << "\n=== Task 4.2: Query Preprocessing ===" << endl;
+        string test_query = argv[2];
+        cout << "Input query: \"" << test_query << "\"" << endl;
+        
+        // Load stopwords (reuse from existing setup)
+        unordered_set<string> stopwords;
+        ifstream stopword_file("mock_corpus/stopwords.txt");
+        if (stopword_file.is_open()) {
+            string word;
+            while (getline(stopword_file, word)) {
+                stopwords.insert(word);
+            }
+            stopword_file.close();
+        }
+        
+        vector<string> processed = preprocess_query(test_query, stopwords);
+        
+        cout << "Processed tokens: [";
+        for (size_t i = 0; i < processed.size(); i++) {
+            if (i > 0) cout << ", ";
+            cout << "\"" << processed[i] << "\"";
+        }
+        cout << "]" << endl;
+    }
     
     return 0;
 }

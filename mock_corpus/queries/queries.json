@@ -1,0 +1,10 @@
+{"query_id": "1", "title": "covid origin", "description": "what is the origin of COVID-19", "narrative": "seeking information about the origin and source of the COVID-19 virus"}
+{"query_id": "2", "title": "coronavirus OR covid", "description": "information about coronavirus and covid", "narrative": "seeking any information related to coronavirus or covid"}
+{"query_id": "3", "title": "information retrieval", "description": "studies about information retrieval", "narrative": "seeking information about information retrieval systems and research"}
+{"query_id": "4", "title": "covid AND wuhan", "description": "covid related to wuhan", "narrative": "seeking information about covid specifically related to wuhan"}
+{"query_id": "5", "title": "origin NOT retrieval", "description": "origin information excluding retrieval", "narrative": "seeking information about origins but not about information retrieval"}
+{"query_id": "6", "title": "(information retrieval) OR covid", "description": "information retrieval or covid studies", "narrative": "seeking studies about either information retrieval or covid"}
+{"query_id": "7", "title": "IIT delhi", "description": "information about IIT Delhi", "narrative": "seeking information related to IIT Delhi"}
+{"query_id": "8", "title": "study AND people", "description": "studies involving people", "narrative": "seeking research studies that involve people"}
+{"query_id": "9", "title": "coronavirus origin debated", "description": "debate about coronavirus origin", "narrative": "seeking information about the debate surrounding coronavirus origin"}
+{"query_id": "10", "title": "(covid OR coronavirus) AND NOT retrieval", "description": "covid or coronavirus but not retrieval", "narrative": "seeking information about covid or coronavirus but excluding information retrieval topics"}
