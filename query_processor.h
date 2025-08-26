@@ -23,4 +23,5 @@ public:
         const std::map<std::string, std::map<std::string, std::vector<uint32_t>>>& index);
 private:
     static int get_precedence(const std::string& op);
+    static bool is_right_associative(const std::string& op);
 };

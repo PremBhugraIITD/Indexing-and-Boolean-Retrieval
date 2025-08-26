@@ -16,34 +16,41 @@ using namespace std;
 vector<string> global_all_docs; // Global vector to store all document names
 
 // Variable-byte decoding function
-uint32_t decode_vbyte(const vector<uint8_t>& data, size_t& pos) {
+uint32_t decode_vbyte(const vector<uint8_t> &data, size_t &pos)
+{
     uint32_t result = 0;
     uint32_t shift = 0;
-    
-    while (pos < data.size()) {
+
+    while (pos < data.size())
+    {
         uint8_t byte = data[pos++];
         result |= (byte & 127) << shift;
-        if ((byte & 128) == 0) break; // Final byte has MSB=0
+        if ((byte & 128) == 0)
+            break; // Final byte has MSB=0
         shift += 7;
     }
     return result;
 }
 
 // Parse doc_map.json manually
-vector<string> parse_doc_map(const string& json_content) {
+vector<string> parse_doc_map(const string &json_content)
+{
     vector<string> docs;
     istringstream iss(json_content);
     string line;
-    
-    while (getline(iss, line)) {
+
+    while (getline(iss, line))
+    {
         // Remove leading/trailing whitespace
         line.erase(0, line.find_first_not_of(" \t"));
         line.erase(line.find_last_not_of(" \t") + 1);
-        
+
         // Look for quoted strings (document names)
-        if (line.length() >= 2 && line[0] == '"') {
+        if (line.length() >= 2 && line[0] == '"')
+        {
             size_t end = line.find_last_of('"');
-            if (end > 0 && end != line.find_first_of('"')) {
+            if (end > 0 && end != line.find_first_of('"'))
+            {
                 docs.push_back(line.substr(1, end - 1));
             }
         }
@@ -52,410 +59,552 @@ vector<string> parse_doc_map(const string& json_content) {
 }
 
 // Parse metadata.json manually
-map<string, pair<size_t, size_t>> parse_metadata(const string& json_content) {
+map<string, pair<size_t, size_t>> parse_metadata(const string &json_content)
+{
     map<string, pair<size_t, size_t>> metadata;
     istringstream iss(json_content);
     string line;
     string current_term;
     size_t offset = 0, length = 0;
     bool has_offset = false, has_length = false;
-    
-    while (getline(iss, line)) {
+
+    while (getline(iss, line))
+    {
         line.erase(0, line.find_first_not_of(" \t"));
         line.erase(line.find_last_not_of(" \t") + 1);
-        
+
         // Look for term names
-        if (line.length() >= 2 && line[0] == '"' && line.find("\": {") != string::npos) {
+        if (line.length() >= 2 && line[0] == '"' && line.find("\": {") != string::npos)
+        {
             size_t end_quote = line.find('"', 1);
             current_term = line.substr(1, end_quote - 1);
             has_offset = has_length = false;
         }
         // Look for offset
-        else if (line.find("\"offset\": ") != string::npos) {
+        else if (line.find("\"offset\": ") != string::npos)
+        {
             size_t start = line.find(": ") + 2;
             size_t end = line.find_last_of(',');
-            if (end == string::npos) end = line.length();
+            if (end == string::npos)
+                end = line.length();
             offset = stoul(line.substr(start, end - start));
             has_offset = true;
         }
         // Look for length
-        else if (line.find("\"length\": ") != string::npos) {
+        else if (line.find("\"length\": ") != string::npos)
+        {
             size_t start = line.find(": ") + 2;
             size_t end = line.length();
             length = stoul(line.substr(start, end - start));
             has_length = true;
-            
-            if (!current_term.empty() && has_offset && has_length) {
+
+            if (!current_term.empty() && has_offset && has_length)
+            {
                 metadata[current_term] = make_pair(offset, length);
             }
         }
     }
-    
+
     return metadata;
 }
 
 // JSON escaping function
-string escape_json_string(const string& s) {
+string escape_json_string(const string &s)
+{
     string result;
-    for (char c : s) {
-        switch (c) {
-            case '"': result += "\\\""; break;
-            case '\\': result += "\\\\"; break;
-            case '\n': result += "\\n"; break;
-            case '\r': result += "\\r"; break;
-            case '\t': result += "\\t"; break;
-            default: result += c; break;
+    for (char c : s)
+    {
+        switch (c)
+        {
+        case '"':
+            result += "\\\"";
+            break;
+        case '\\':
+            result += "\\\\";
+            break;
+        case '\n':
+            result += "\\n";
+            break;
+        case '\r':
+            result += "\\r";
+            break;
+        case '\t':
+            result += "\\t";
+            break;
+        default:
+            result += c;
+            break;
         }
     }
     return result;
 }
 
 // Helper function to check if a token is a Boolean operator
-bool is_operator(const string& token) {
+bool is_operator(const string &token)
+{
     string upper_token = token;
     transform(upper_token.begin(), upper_token.end(), upper_token.begin(), ::toupper);
     return upper_token == "AND" || upper_token == "OR" || upper_token == "NOT";
 }
 
 // Helper function to check if a token is a parenthesis
-bool is_parenthesis(const string& token) {
+bool is_parenthesis(const string &token)
+{
     return token == "(" || token == ")";
 }
 
 // Helper function to check if a token is a term (not operator or parenthesis)
-bool is_term(const string& token) {
+bool is_term(const string &token)
+{
     return !is_operator(token) && !is_parenthesis(token);
 }
 
 // Query preprocessing function for Task 4.2
-vector<string> preprocess_query(const string &title, const unordered_set<string> &stopwords) {
-    if (title.empty()) {
+vector<string> preprocess_query(const string &title, const unordered_set<string> &stopwords)
+{
+    if (title.empty())
+    {
         return vector<string>();
     }
-    
+
     // Step 1: Add spaces around parentheses
     string modified_title = title;
-    
+
     // Replace ( with " ( "
     size_t pos = 0;
-    while ((pos = modified_title.find('(', pos)) != string::npos) {
+    while ((pos = modified_title.find('(', pos)) != string::npos)
+    {
         modified_title.replace(pos, 1, " ( ");
         pos += 3;
     }
-    
+
     // Replace ) with " ) "
     pos = 0;
-    while ((pos = modified_title.find(')', pos)) != string::npos) {
+    while ((pos = modified_title.find(')', pos)) != string::npos)
+    {
         modified_title.replace(pos, 1, " ) ");
         pos += 3;
     }
-    
+
     // Step 2: Tokenize using existing tokenizer
     vector<string> tokens = tokenize(modified_title, stopwords);
-    
-    if (tokens.empty()) {
+
+    if (tokens.empty())
+    {
         return vector<string>();
     }
-    
+
     // Step 3: Canonicalize operators (convert to uppercase)
-    for (string& token : tokens) {
+    for (string &token : tokens)
+    {
         string upper_token = token;
         transform(upper_token.begin(), upper_token.end(), upper_token.begin(), ::toupper);
-        
-        if (upper_token == "AND" || upper_token == "OR" || upper_token == "NOT") {
+
+        if (upper_token == "AND" || upper_token == "OR" || upper_token == "NOT")
+        {
             token = upper_token;
         }
         // Parentheses remain as-is: "(" and ")"
     }
-    
+
     // Step 4: Insert implicit AND operators
     vector<string> result;
-    
-    for (size_t i = 0; i < tokens.size(); i++) {
+
+    for (size_t i = 0; i < tokens.size(); i++)
+    {
         result.push_back(tokens[i]);
-        
+
         // Check if we need to insert AND after current token
-        if (i + 1 < tokens.size()) {
-            const string& current = tokens[i];
-            const string& next = tokens[i + 1];
-            
+        if (i + 1 < tokens.size())
+        {
+            const string &current = tokens[i];
+            const string &next = tokens[i + 1];
+
             bool insert_and = false;
-            
+
             // Case 1: term term
-            if (is_term(current) && is_term(next)) {
+            if (is_term(current) && is_term(next))
+            {
                 insert_and = true;
             }
             // Case 2: term (
-            else if (is_term(current) && next == "(") {
+            else if (is_term(current) && next == "(")
+            {
                 insert_and = true;
             }
             // Case 3: ) term
-            else if (current == ")" && is_term(next)) {
+            else if (current == ")" && is_term(next))
+            {
                 insert_and = true;
             }
             // Case 4: ) (
-            else if (current == ")" && next == "(") {
+            else if (current == ")" && next == "(")
+            {
                 insert_and = true;
             }
             // Case 5: term NOT
-            else if (is_term(current) && next == "NOT") {
+            else if (is_term(current) && next == "NOT")
+            {
                 insert_and = true;
             }
-            
-            if (insert_and) {
+
+            if (insert_and)
+            {
                 result.push_back("AND");
             }
         }
     }
-    
+
     return result;
 }
 
 // Main decompression function
-map<string, map<string, vector<uint32_t>>> decompress_index(const string& compressed_dir) {
+map<string, map<string, vector<uint32_t>>> decompress_index(const string &compressed_dir)
+{
     map<string, map<string, vector<uint32_t>>> index;
-    
+
     // Load doc_map.json
     ifstream doc_map_file(compressed_dir + "/doc_map.json");
-    if (!doc_map_file.is_open()) {
+    if (!doc_map_file.is_open())
+    {
         cerr << "Error: Cannot open " << compressed_dir << "/doc_map.json" << endl;
         return index;
     }
     string doc_map_content((istreambuf_iterator<char>(doc_map_file)), istreambuf_iterator<char>());
     doc_map_file.close();
     vector<string> doc_map = parse_doc_map(doc_map_content);
-    
-    //Initialize global_all_docs
+
+    // Initialize global_all_docs
     global_all_docs = doc_map;
     sort(global_all_docs.begin(), global_all_docs.end());
 
     // Load metadata.json
     ifstream metadata_file(compressed_dir + "/metadata.json");
-    if (!metadata_file.is_open()) {
+    if (!metadata_file.is_open())
+    {
         cerr << "Error: Cannot open " << compressed_dir << "/metadata.json" << endl;
         return index;
     }
     string metadata_content((istreambuf_iterator<char>(metadata_file)), istreambuf_iterator<char>());
     metadata_file.close();
     map<string, pair<size_t, size_t>> metadata = parse_metadata(metadata_content);
-    
+
     // Load postings.bin
     ifstream postings_file(compressed_dir + "/postings.bin", ios::binary);
-    if (!postings_file.is_open()) {
+    if (!postings_file.is_open())
+    {
         cerr << "Error: Cannot open " << compressed_dir << "/postings.bin" << endl;
         return index;
     }
     vector<uint8_t> postings_data((istreambuf_iterator<char>(postings_file)), istreambuf_iterator<char>());
     postings_file.close();
-    
+
     // Decompress each term
-    for (const auto& term_meta : metadata) {
-        const string& term = term_meta.first;
+    for (const auto &term_meta : metadata)
+    {
+        const string &term = term_meta.first;
         size_t offset = term_meta.second.first;
         size_t length = term_meta.second.second;
-        
-        if (offset >= postings_data.size()) {
+
+        if (offset >= postings_data.size())
+        {
             cerr << "Warning: Invalid offset for term " << term << endl;
             continue;
         }
-        
+
         size_t pos = offset;
         uint32_t doc_count = decode_vbyte(postings_data, pos);
-        
-        for (uint32_t d = 0; d < doc_count; d++) {
+
+        for (uint32_t d = 0; d < doc_count; d++)
+        {
             uint32_t doc_id = decode_vbyte(postings_data, pos);
             uint32_t pos_count = decode_vbyte(postings_data, pos);
-            
+
             // Decode positions (first is absolute, rest are deltas)
             vector<uint32_t> positions;
-            if (pos_count > 0) {
+            if (pos_count > 0)
+            {
                 uint32_t first_pos = decode_vbyte(postings_data, pos);
                 positions.push_back(first_pos);
-                
-                for (uint32_t i = 1; i < pos_count; i++) {
+
+                for (uint32_t i = 1; i < pos_count; i++)
+                {
                     uint32_t delta = decode_vbyte(postings_data, pos);
                     positions.push_back(positions.back() + delta);
                 }
             }
-            
+
             // Map doc_id to document string
             string doc_name;
-            if (doc_id < doc_map.size()) {
+            if (doc_id < doc_map.size())
+            {
                 doc_name = doc_map[doc_id];
-            } else {
+            }
+            else
+            {
                 doc_name = "DOC_" + to_string(doc_id);
             }
-            
+
             index[term][doc_name] = positions;
         }
     }
-    
+
     // Write decompressed_index.json to compressed_dir
     ofstream out(compressed_dir + "/decompressed_index.json");
-    if (out.is_open()) {
+    if (out.is_open())
+    {
         // Sort terms for deterministic output
         vector<string> terms;
-        for (const auto& term_entry : index) {
+        for (const auto &term_entry : index)
+        {
             terms.push_back(term_entry.first);
         }
         sort(terms.begin(), terms.end());
-        
+
         out << "{\n";
-        for (size_t t = 0; t < terms.size(); t++) {
-            const string& term = terms[t];
+        for (size_t t = 0; t < terms.size(); t++)
+        {
+            const string &term = terms[t];
             out << "  \"" << escape_json_string(term) << "\": {\n";
-            
+
             // Sort documents for this term
             vector<string> docs;
-            for (const auto& doc_entry : index[term]) {
+            for (const auto &doc_entry : index[term])
+            {
                 docs.push_back(doc_entry.first);
             }
             sort(docs.begin(), docs.end());
-            
-            for (size_t d = 0; d < docs.size(); d++) {
-                const string& doc = docs[d];
+
+            for (size_t d = 0; d < docs.size(); d++)
+            {
+                const string &doc = docs[d];
                 out << "    \"" << escape_json_string(doc) << "\": [";
-                
-                const auto& positions = index[term][doc];
-                for (size_t i = 0; i < positions.size(); i++) {
-                    if (i > 0) out << ", ";
+
+                const auto &positions = index[term][doc];
+                for (size_t i = 0; i < positions.size(); i++)
+                {
+                    if (i > 0)
+                        out << ", ";
                     out << positions[i];
                 }
                 out << "]";
-                
-                if (d + 1 < docs.size()) out << ",";
+
+                if (d + 1 < docs.size())
+                    out << ",";
                 out << "\n";
             }
-            
+
             out << "  }";
-            if (t + 1 < terms.size()) out << ",";
+            if (t + 1 < terms.size())
+                out << ",";
             out << "\n";
         }
         out << "}\n";
         out.close();
     }
-    
+
     return index;
 }
 
-//get_precedence function for QueryProcessor
-int QueryProcessor::get_precedence(const string& op) {
-    if (op == "NOT") return 3;
-    if (op == "AND") return 2;
-    if (op == "OR") return 1;
+// get_precedence function for QueryProcessor
+int QueryProcessor::get_precedence(const string &op)
+{
+    if (op == "NOT")
+        return 3;
+    if (op == "AND")
+        return 2;
+    if (op == "OR")
+        return 1;
     return 0; // For terms and parentheses
 }
 
-//infix_to_postfix function for QueryProcessor
-vector<string> QueryProcessor::infix_to_postfix(const vector<string>& tokens) {
+// check if operator is right-associative
+bool QueryProcessor::is_right_associative(const string &op)
+{
+    return op == "NOT"; // NOT is right-associative
+}
+
+// infix_to_postfix function for QueryProcessor
+vector<string> QueryProcessor::infix_to_postfix(const vector<string> &tokens)
+{
     vector<string> postfix;
     stack<string> operators;
-    
-    for (const auto& token : tokens) {
-        if (!is_operator(token) && !is_parenthesis(token)) {
+
+    for (const auto &token : tokens)
+    {
+        if (!is_operator(token) && !is_parenthesis(token))
+        {
             // Term - add to output
             postfix.push_back(token);
         }
-        else if (token == "(") {
+        else if (token == "(")
+        {
             operators.push(token);
         }
-        else if (token == ")") {
-            while (!operators.empty() && operators.top() != "(") {
+        else if (token == ")")
+        {
+            while (!operators.empty() && operators.top() != "(")
+            {
                 postfix.push_back(operators.top());
                 operators.pop();
             }
-            if (!operators.empty()) operators.pop(); // Remove "("
+            if (!operators.empty())
+                operators.pop(); // Remove "("
         }
-        else {
-            // Operator
-            while (!operators.empty() && operators.top() != "(" && 
-                   get_precedence(operators.top()) >= get_precedence(token)) {
+        else
+        {
+            // Operator - handle associativity
+            while (!operators.empty() && operators.top() != "(" &&
+                   (is_right_associative(token) ? 
+                    get_precedence(operators.top()) > get_precedence(token) :
+                    get_precedence(operators.top()) >= get_precedence(token)))
+            {
                 postfix.push_back(operators.top());
                 operators.pop();
             }
             operators.push(token);
         }
     }
-    
-    while (!operators.empty()) {
+
+    while (!operators.empty())
+    {
         postfix.push_back(operators.top());
         operators.pop();
     }
-    
+
     return postfix;
 }
 
-//build_tree function for QueryProcessor
-QueryNode* QueryProcessor::build_tree(const vector<string>& postfix) {
-    stack<QueryNode*> node_stack;
-    
-    for (const auto& token : postfix) {
-        if (!is_operator(token)) {
+// build_tree function for QueryProcessor
+QueryNode *QueryProcessor::build_tree(const vector<string> &postfix)
+{
+    stack<QueryNode *> node_stack;
+
+    for (const auto &token : postfix)
+    {
+        if (!is_operator(token))
+        {
             // Term - create leaf node
             node_stack.push(new QueryNode(token));
-        } else {
+        }
+        else
+        {
             // Operator - pop nodes and create internal node
-            QueryNode* node = new QueryNode(token);
-            if (token == "NOT") {
-                if (!node_stack.empty()) {
+            QueryNode *node = new QueryNode(token);
+            if (token == "NOT")
+            {
+                if (!node_stack.empty())
+                {
                     node->right = node_stack.top();
                     node_stack.pop();
                 }
-            } else {
-                if (!node_stack.empty()) {
+                else
+                {
+                    // Error: NOT operator without operand
+                    delete node;
+                    // Clean up remaining nodes
+                    while (!node_stack.empty())
+                    {
+                        delete node_stack.top();
+                        node_stack.pop();
+                    }
+                    return nullptr;
+                }
+            }
+            else
+            {
+                // Binary operator (AND, OR)
+                if (node_stack.size() >= 2)
+                {
                     node->right = node_stack.top();
                     node_stack.pop();
-                }
-                if (!node_stack.empty()) {
                     node->left = node_stack.top();
                     node_stack.pop();
+                }
+                else
+                {
+                    // Error: Binary operator without enough operands
+                    delete node;
+                    // Clean up remaining nodes
+                    while (!node_stack.empty())
+                    {
+                        delete node_stack.top();
+                        node_stack.pop();
+                    }
+                    return nullptr;
                 }
             }
             node_stack.push(node);
         }
     }
-    
-    return node_stack.empty() ? nullptr : node_stack.top();
+
+    // Should have exactly one node left (the root)
+    if (node_stack.size() == 1)
+    {
+        return node_stack.top();
+    }
+    else
+    {
+        // Error: malformed expression
+        while (!node_stack.empty())
+        {
+            delete node_stack.top();
+            node_stack.pop();
+        }
+        return nullptr;
+    }
 }
 
-//evaluate_tree function for QueryProcessor
-vector<string> QueryProcessor::evaluate_tree(QueryNode* root, 
-    const map<string, map<string, vector<uint32_t>>>& index) {
-    
-    if (!root) return {};
-    
-    if (!is_operator(root->value)) {
+// evaluate_tree function for QueryProcessor
+vector<string> QueryProcessor::evaluate_tree(QueryNode *root,
+                                             const map<string, map<string, vector<uint32_t>>> &index)
+{
+
+    if (!root)
+        return {};
+
+    if (!is_operator(root->value))
+    {
         // Leaf node (term)
         auto it = index.find(root->value);
-        if (it != index.end()) {
+        if (it != index.end())
+        {
             vector<string> docs;
-            for (const auto& doc_entry : it->second) {
+            for (const auto &doc_entry : it->second)
+            {
                 docs.push_back(doc_entry.first);
             }
             sort(docs.begin(), docs.end());
             return docs;
-        } else {
+        }
+        else
+        {
             return {}; // Term not found
         }
     }
-    
+
     // Internal node (operator)
     vector<string> left_result = evaluate_tree(root->left, index);
     vector<string> right_result = evaluate_tree(root->right, index);
-    
-    if (root->value == "AND") {
+
+    if (root->value == "AND")
+    {
         vector<string> result;
         set_intersection(left_result.begin(), left_result.end(),
                          right_result.begin(), right_result.end(),
                          back_inserter(result));
         return result;
-    } else if (root->value == "OR") {
+    }
+    else if (root->value == "OR")
+    {
         vector<string> result;
         set_union(left_result.begin(), left_result.end(),
                   right_result.begin(), right_result.end(),
                   back_inserter(result));
         return result;
-    } else if (root->value == "NOT") {
+    }
+    else if (root->value == "NOT")
+    {
         // NOT operator - only right child is relevant
 
         vector<string> result;
@@ -464,83 +613,102 @@ vector<string> QueryProcessor::evaluate_tree(QueryNode* root,
                        back_inserter(result));
         return result;
     }
-    
+
     return {};
 }
 
-void print_tree(QueryNode* node, int depth=0) {
-    if (!node) return;
-    print_tree(node->right, depth+1);
-    for(int i=0;i<depth;i++) cout<<"    ";
+void print_tree(QueryNode *node, int depth = 0)
+{
+    if (!node)
+        return;
+    print_tree(node->right, depth + 1);
+    for (int i = 0; i < depth; i++)
+        cout << "    ";
     cout << node->value << "\n";
-    print_tree(node->left, depth+1);
+    print_tree(node->left, depth + 1);
 }
 
-
 // Test function for Task 4.1 and 4.2
-int main(int argc, char* argv[]) {
-    if (argc < 2) {
+int main(int argc, char *argv[])
+{
+    if (argc < 2)
+    {
         cerr << "Usage: " << argv[0] << " <compressed_dir> [test_query]" << endl;
         cerr << "Example: " << argv[0] << " mock_corpus/compressed_dir_test" << endl;
         cerr << "Example: " << argv[0] << " mock_corpus/compressed_dir_test \"jaguar NOT car\"" << endl;
         return 1;
     }
-    
+
     string compressed_dir = argv[1];
-    
+
     // Task 4.1: Test decompression
     cout << "=== Task 4.1: Decompression ===" << endl;
     cout << "Decompressing index from: " << compressed_dir << endl;
-    
+
     auto index = decompress_index(compressed_dir);
-    
+
     cout << "Decompressed index with " << index.size() << " terms." << endl;
     cout << "Decompressed index saved to: " << compressed_dir << "/decompressed_index.json" << endl;
-    
+
     // Task 4.2: Test query preprocessing (if query provided)
-    if (argc >= 3) {
+    if (argc >= 3)
+    {
         cout << "\n=== Task 4.2: Query Preprocessing ===" << endl;
         string test_query = argv[2];
         cout << "Input query: \"" << test_query << "\"" << endl;
-        
+
         // Load stopwords (reuse from existing setup)
         unordered_set<string> stopwords;
         ifstream stopword_file("mock_corpus/stopwords.txt");
-        if (stopword_file.is_open()) {
+        if (stopword_file.is_open())
+        {
             string word;
-            while (getline(stopword_file, word)) {
+            while (getline(stopword_file, word))
+            {
                 stopwords.insert(word);
             }
             stopword_file.close();
         }
-        
+
         vector<string> processed = preprocess_query(test_query, stopwords);
 
         // Convert processed tokens to postfix and build tree
         vector<string> postfix = QueryProcessor::infix_to_postfix(processed);
-        QueryNode* root = QueryProcessor::build_tree(postfix);
+        QueryNode *root = QueryProcessor::build_tree(postfix);
 
-        //Evaluate the query tree
+        if (root == nullptr)
+        {
+            cout << "Error: Malformed query expression!" << endl;
+            return 1;
+        }
+
+        // Evaluate the query tree
         vector<string> results = QueryProcessor::evaluate_tree(root, index);
 
-        //Print the query tree for debugging
+        // Print the query tree for debugging
         cout << "Processed tokens: [";
-        for (size_t i = 0; i < processed.size(); i++) {
-            if (i > 0) cout << ", ";
+        for (size_t i = 0; i < processed.size(); i++)
+        {
+            if (i > 0)
+                cout << ", ";
             cout << "\"" << processed[i] << "\"";
         }
         cout << "]" << endl;
 
         cout << "\nQuery results: [";
-        for (size_t i = 0; i < results.size(); i++) {
-            if (i > 0) cout << ", ";
+        for (size_t i = 0; i < results.size(); i++)
+        {
+            if (i > 0)
+                cout << ", ";
             cout << "\"" << results[i] << "\"";
         }
         cout << "]" << endl;
 
         cout << "\nPostfix notation: [";
-        for (size_t i = 0; i < postfix.size(); i++) {
-            if (i > 0) cout << ", ";
+        for (size_t i = 0; i < postfix.size(); i++)
+        {
+            if (i > 0)
+                cout << ", ";
             cout << "\"" << postfix[i] << "\"";
         }
         cout << "]\n\n";
@@ -551,6 +719,6 @@ int main(int argc, char* argv[]) {
 
         delete root; // Free the query tree
     }
-    
+
     return 0;
 }
