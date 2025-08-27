@@ -712,93 +712,229 @@ unordered_set<string> load_stopwords_with_fallback(const string &output_dir)
 vector<pair<string, string>> parse_queries_file(const string &path_to_query_file)
 {
     vector<pair<string, string>> queries; // (qid, title) pairs
-    ifstream file(path_to_query_file);
-
-    if (!file.is_open())
+    
+    // First try to detect UTF-16 encoding
+    ifstream detect_file(path_to_query_file, ios::binary);
+    if (!detect_file.is_open())
     {
         cerr << "Warning: Cannot open query file: " << path_to_query_file << endl;
         return queries;
     }
-
-    string line;
-    while (getline(file, line))
+    
+    // Read first 2 bytes to check for UTF-16 BOM
+    char bom[2];
+    detect_file.read(bom, 2);
+    detect_file.close();
+    
+    bool is_utf16 = (bom[0] == (char)0xFF && bom[1] == (char)0xFE);
+    
+    if (is_utf16)
     {
-        // Remove leading/trailing whitespace
-        line.erase(0, line.find_first_not_of(" \t"));
-        line.erase(line.find_last_not_of(" \t") + 1);
-
-        if (line.empty() || line[0] != '{')
-            continue;
-
-        string qid, title;
-        bool has_qid = false, has_title = false;
-
-        // Simple JSON parsing for qid and title
-        size_t pos = 0;
-        while (pos < line.length())
+        cout << "Detected UTF-16 encoding in: " << path_to_query_file << endl;
+        
+        // Read the entire file as binary
+        ifstream binary_file(path_to_query_file, ios::binary);
+        vector<char> buffer((istreambuf_iterator<char>(binary_file)), istreambuf_iterator<char>());
+        binary_file.close();
+        
+        // Convert UTF-16 LE to UTF-8/ASCII
+        string content;
+        for (size_t i = 2; i < buffer.size(); i += 2) // Skip BOM, read 2 bytes at a time
         {
-            // Look for "query_id" field
-            size_t qid_pos = line.find("\"query_id\"", pos);
-            if (qid_pos != string::npos)
+            if (i + 1 < buffer.size())
             {
-                size_t colon_pos = line.find(":", qid_pos);
-                if (colon_pos != string::npos)
+                // For ASCII characters in UTF-16 LE, the high byte is 0
+                char ascii_char = buffer[i];
+                char high_byte = buffer[i + 1];
+                
+                if (high_byte == 0 && ascii_char != 0) // Valid ASCII character
                 {
-                    size_t value_start = line.find("\"", colon_pos);
-                    if (value_start != string::npos)
-                    {
-                        value_start++;
-                        size_t value_end = line.find("\"", value_start);
-                        if (value_end != string::npos)
-                        {
-                            qid = line.substr(value_start, value_end - value_start);
-                            has_qid = true;
-                        }
-                    }
+                    content += ascii_char;
+                }
+                else if (ascii_char == 0 && high_byte == 0) // Null terminator
+                {
+                    break;
                 }
             }
+        }
+        
+        // Parse the converted content line by line
+        istringstream content_stream(content);
+        string line;
+        int line_count = 0;
+        while (getline(content_stream, line))
+        {
+            line_count++;
+            // Remove leading/trailing whitespace
+            line.erase(0, line.find_first_not_of(" \t"));
+            line.erase(line.find_last_not_of(" \t") + 1);
 
-            // Look for "title" field
-            size_t title_pos = line.find("\"title\"", pos);
-            if (title_pos != string::npos)
+            if (line.empty()) {
+                continue;
+            }
+            if (line[0] != '{') {
+                continue;
+            }
+
+            string qid, title;
+            bool has_qid = false, has_title = false;
+
+            // Simple JSON parsing for qid and title
+            size_t pos = 0;
+            while (pos < line.length())
             {
-                size_t colon_pos = line.find(":", title_pos);
-                if (colon_pos != string::npos)
+                // Look for "query_id" field
+                size_t qid_pos = line.find("\"query_id\"", pos);
+                if (qid_pos != string::npos)
                 {
-                    size_t value_start = line.find("\"", colon_pos);
-                    if (value_start != string::npos)
+                    size_t colon_pos = line.find(":", qid_pos);
+                    if (colon_pos != string::npos)
                     {
-                        value_start++;
-                        size_t value_end = line.find("\"", value_start);
-                        if (value_end != string::npos)
+                        size_t value_start = line.find("\"", colon_pos);
+                        if (value_start != string::npos)
                         {
-                            title = line.substr(value_start, value_end - value_start);
-                            has_title = true;
+                            value_start++;
+                            size_t value_end = line.find("\"", value_start);
+                            if (value_end != string::npos)
+                            {
+                                qid = line.substr(value_start, value_end - value_start);
+                                has_qid = true;
+                            }
                         }
                     }
                 }
+
+                // Look for "title" field
+                size_t title_pos = line.find("\"title\"", pos);
+                if (title_pos != string::npos)
+                {
+                    size_t colon_pos = line.find(":", title_pos);
+                    if (colon_pos != string::npos)
+                    {
+                        size_t value_start = line.find("\"", colon_pos);
+                        if (value_start != string::npos)
+                        {
+                            value_start++;
+                            size_t value_end = line.find("\"", value_start);
+                            if (value_end != string::npos)
+                            {
+                                title = line.substr(value_start, value_end - value_start);
+                                has_title = true;
+                            }
+                        }
+                    }
+                }
+
+                if (has_qid && has_title)
+                    break;
+
+                pos = max(qid_pos, title_pos);
+                if (pos == string::npos)
+                    break;
+                pos++;
             }
 
             if (has_qid && has_title)
-                break;
-
-            pos = max(qid_pos, title_pos);
-            if (pos == string::npos)
-                break;
-            pos++;
-        }
-
-        if (has_qid && has_title)
-        {
-            queries.push_back(make_pair(qid, title));
-        }
-        else if (has_qid && !has_title)
-        {
-            cerr << "Warning: Query " << qid << " missing title field, skipping." << endl;
+            {
+                queries.push_back(make_pair(qid, title));
+            }
         }
     }
+    else
+    {
+        // Regular UTF-8/ASCII file processing
+        ifstream file(path_to_query_file);
+        if (!file.is_open())
+        {
+            cerr << "Warning: Cannot open query file: " << path_to_query_file << endl;
+            return queries;
+        }
 
-    file.close();
+        cout << "Processing UTF-8 file: " << path_to_query_file << endl;
+
+        string line;
+        int line_count = 0;
+        while (getline(file, line))
+        {
+            line_count++;
+            // Remove leading/trailing whitespace
+            line.erase(0, line.find_first_not_of(" \t"));
+            line.erase(line.find_last_not_of(" \t") + 1);
+
+            if (line.empty()) {
+                continue;
+            }
+            if (line[0] != '{') {
+                continue;
+            }
+
+            string qid, title;
+            bool has_qid = false, has_title = false;
+
+            // Simple JSON parsing for qid and title
+            size_t pos = 0;
+            while (pos < line.length())
+            {
+                // Look for "query_id" field
+                size_t qid_pos = line.find("\"query_id\"", pos);
+                if (qid_pos != string::npos)
+                {
+                    size_t colon_pos = line.find(":", qid_pos);
+                    if (colon_pos != string::npos)
+                    {
+                        size_t value_start = line.find("\"", colon_pos);
+                        if (value_start != string::npos)
+                        {
+                            value_start++;
+                            size_t value_end = line.find("\"", value_start);
+                            if (value_end != string::npos)
+                            {
+                                qid = line.substr(value_start, value_end - value_start);
+                                has_qid = true;
+                            }
+                        }
+                    }
+                }
+
+                // Look for "title" field
+                size_t title_pos = line.find("\"title\"", pos);
+                if (title_pos != string::npos)
+                {
+                    size_t colon_pos = line.find(":", title_pos);
+                    if (colon_pos != string::npos)
+                    {
+                        size_t value_start = line.find("\"", colon_pos);
+                        if (value_start != string::npos)
+                        {
+                            value_start++;
+                            size_t value_end = line.find("\"", value_start);
+                            if (value_end != string::npos)
+                            {
+                                title = line.substr(value_start, value_end - value_start);
+                                has_title = true;
+                            }
+                        }
+                    }
+                }
+
+                if (has_qid && has_title)
+                    break;
+
+                pos = max(qid_pos, title_pos);
+                if (pos == string::npos)
+                    break;
+                pos++;
+            }
+
+            if (has_qid && has_title)
+            {
+                queries.push_back(make_pair(qid, title));
+            }
+        }
+        file.close();
+    }
+
+    cout << "Total queries parsed: " << queries.size() << endl;
     return queries;
 }
 
