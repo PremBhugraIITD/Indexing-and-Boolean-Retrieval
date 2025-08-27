@@ -8,11 +8,28 @@
 #include <algorithm>
 #include <unordered_set>
 #include <set>
-#include "tokenizer.h"
-#include "query_processor.h"
 #include <stack>
+#ifdef _WIN32
+    #include <direct.h>
+#else
+    #include <sys/stat.h>
+#endif
+#include "tokenizer.h"
 
 using namespace std;
+
+// QueryNode structure for AST
+struct QueryNode {
+    string value;  // operator or term
+    QueryNode* left;
+    QueryNode* right;
+    
+    QueryNode(string v) : value(v), left(nullptr), right(nullptr) {}
+    ~QueryNode() {
+        delete left;
+        delete right;
+    }
+};
 
 vector<string> global_all_docs; // Global vector to store all document names
 
@@ -259,6 +276,18 @@ vector<string> preprocess_query(const string &title, const unordered_set<string>
     return result;
 }
 
+// Required function declarations for assignment compliance
+map<string, map<string, vector<uint32_t>>> decompress_index(const string &compressed_dir);
+QueryNode* query_parser(vector<string> query_tokens);
+void boolean_retrieval(const map<string, map<string, vector<uint32_t>>> &inverted_index, const string &path_to_query_file, const string &output_dir);
+
+// Helper functions for query processing
+int get_precedence(const string &op);
+bool is_right_associative(const string &op);
+vector<string> infix_to_postfix(const vector<string> &tokens);
+QueryNode* build_tree(const vector<string> &postfix);
+vector<string> evaluate_tree(QueryNode *root, const map<string, map<string, vector<uint32_t>>> &index);
+
 // Main decompression function
 map<string, map<string, vector<uint32_t>>> decompress_index(const string &compressed_dir)
 {
@@ -407,8 +436,8 @@ map<string, map<string, vector<uint32_t>>> decompress_index(const string &compre
     return index;
 }
 
-// get_precedence function for QueryProcessor
-int QueryProcessor::get_precedence(const string &op)
+// get_precedence function
+int get_precedence(const string &op)
 {
     if (op == "NOT")
         return 3;
@@ -420,13 +449,13 @@ int QueryProcessor::get_precedence(const string &op)
 }
 
 // check if operator is right-associative
-bool QueryProcessor::is_right_associative(const string &op)
+bool is_right_associative(const string &op)
 {
     return op == "NOT"; // NOT is right-associative
 }
 
-// infix_to_postfix function for QueryProcessor
-vector<string> QueryProcessor::infix_to_postfix(const vector<string> &tokens)
+// infix_to_postfix function
+vector<string> infix_to_postfix(const vector<string> &tokens)
 {
     vector<string> postfix;
     stack<string> operators;
@@ -456,9 +485,7 @@ vector<string> QueryProcessor::infix_to_postfix(const vector<string> &tokens)
         {
             // Operator - handle associativity
             while (!operators.empty() && operators.top() != "(" &&
-                   (is_right_associative(token) ? 
-                    get_precedence(operators.top()) > get_precedence(token) :
-                    get_precedence(operators.top()) >= get_precedence(token)))
+                   (is_right_associative(token) ? get_precedence(operators.top()) > get_precedence(token) : get_precedence(operators.top()) >= get_precedence(token)))
             {
                 postfix.push_back(operators.top());
                 operators.pop();
@@ -476,8 +503,8 @@ vector<string> QueryProcessor::infix_to_postfix(const vector<string> &tokens)
     return postfix;
 }
 
-// build_tree function for QueryProcessor
-QueryNode *QueryProcessor::build_tree(const vector<string> &postfix)
+// build_tree function
+QueryNode *build_tree(const vector<string> &postfix)
 {
     stack<QueryNode *> node_stack;
 
@@ -556,9 +583,9 @@ QueryNode *QueryProcessor::build_tree(const vector<string> &postfix)
     }
 }
 
-// evaluate_tree function for QueryProcessor
-vector<string> QueryProcessor::evaluate_tree(QueryNode *root,
-                                             const map<string, map<string, vector<uint32_t>>> &index)
+// evaluate_tree function
+vector<string> evaluate_tree(QueryNode *root,
+                             const map<string, map<string, vector<uint32_t>>> &index)
 {
 
     if (!root)
@@ -618,6 +645,16 @@ vector<string> QueryProcessor::evaluate_tree(QueryNode *root,
     return {};
 }
 
+// Query parser function as required by assignment (Task 4.3)
+QueryNode* query_parser(vector<string> query_tokens)
+{
+    // Convert infix to postfix
+    vector<string> postfix = infix_to_postfix(query_tokens);
+    
+    // Build and return AST
+    return build_tree(postfix);
+}
+
 void print_tree(QueryNode *node, int depth = 0)
 {
     if (!node)
@@ -633,11 +670,11 @@ void print_tree(QueryNode *node, int depth = 0)
 unordered_set<string> load_stopwords_with_fallback(const string &output_dir)
 {
     unordered_set<string> stopwords;
-    
+
     // Try output_dir/../stopwords.txt first
     string primary_path = output_dir + "/../stopwords.txt";
     ifstream file(primary_path);
-    
+
     if (!file.is_open())
     {
         // Fallback to ./stopwords.txt
@@ -647,7 +684,7 @@ unordered_set<string> load_stopwords_with_fallback(const string &output_dir)
             file.open("stopwords.txt");
         }
     }
-    
+
     if (file.is_open())
     {
         string word;
@@ -664,7 +701,7 @@ unordered_set<string> load_stopwords_with_fallback(const string &output_dir)
         }
         file.close();
     }
-    
+
     return stopwords;
 }
 
@@ -673,26 +710,26 @@ vector<pair<string, string>> parse_queries_file(const string &path_to_query_file
 {
     vector<pair<string, string>> queries; // (qid, title) pairs
     ifstream file(path_to_query_file);
-    
+
     if (!file.is_open())
     {
         cerr << "Warning: Cannot open query file: " << path_to_query_file << endl;
         return queries;
     }
-    
+
     string line;
     while (getline(file, line))
     {
         // Remove leading/trailing whitespace
         line.erase(0, line.find_first_not_of(" \t"));
         line.erase(line.find_last_not_of(" \t") + 1);
-        
+
         if (line.empty() || line[0] != '{')
             continue;
-            
+
         string qid, title;
         bool has_qid = false, has_title = false;
-        
+
         // Simple JSON parsing for qid and title
         size_t pos = 0;
         while (pos < line.length())
@@ -717,7 +754,7 @@ vector<pair<string, string>> parse_queries_file(const string &path_to_query_file
                     }
                 }
             }
-            
+
             // Look for "title" field
             size_t title_pos = line.find("\"title\"", pos);
             if (title_pos != string::npos)
@@ -738,16 +775,16 @@ vector<pair<string, string>> parse_queries_file(const string &path_to_query_file
                     }
                 }
             }
-            
+
             if (has_qid && has_title)
                 break;
-                
+
             pos = max(qid_pos, title_pos);
             if (pos == string::npos)
                 break;
             pos++;
         }
-        
+
         if (has_qid && has_title)
         {
             queries.push_back(make_pair(qid, title));
@@ -757,19 +794,19 @@ vector<pair<string, string>> parse_queries_file(const string &path_to_query_file
             cerr << "Warning: Query " << qid << " missing title field, skipping." << endl;
         }
     }
-    
+
     file.close();
     return queries;
 }
 
 // Helper function to evaluate query tree using postings map
 vector<string> evaluate_tree_with_postings(QueryNode *root,
-                                          const map<string, vector<string>> &postings_map,
-                                          const vector<string> &universe)
+                                           const map<string, vector<string>> &postings_map,
+                                           const vector<string> &universe)
 {
     if (!root)
         return {};
-        
+
     if (!is_operator(root->value))
     {
         // Leaf node (term)
@@ -783,11 +820,11 @@ vector<string> evaluate_tree_with_postings(QueryNode *root,
             return {}; // Term not found, return empty set
         }
     }
-    
+
     // Internal node (operator)
     vector<string> left_result = evaluate_tree_with_postings(root->left, postings_map, universe);
     vector<string> right_result = evaluate_tree_with_postings(root->right, postings_map, universe);
-    
+
     if (root->value == "AND")
     {
         vector<string> result;
@@ -813,11 +850,11 @@ vector<string> evaluate_tree_with_postings(QueryNode *root,
                        back_inserter(result));
         return result;
     }
-    
+
     return {};
 }
 
-// Main boolean retrieval function
+// Main boolean retrieval function as required by assignment (Task 4.4)
 void boolean_retrieval(
     const map<string, map<string, vector<uint32_t>>> &inverted_index,
     const string &path_to_query_file,
@@ -825,7 +862,7 @@ void boolean_retrieval(
 {
     // Load stopwords
     unordered_set<string> stopwords = load_stopwords_with_fallback(output_dir);
-    
+
     // Load queries
     vector<pair<string, string>> queries = parse_queries_file(path_to_query_file);
     if (queries.empty())
@@ -833,33 +870,37 @@ void boolean_retrieval(
         cerr << "No valid queries found in file: " << path_to_query_file << endl;
         return;
     }
-    
+
     // Build postings_map: term → sorted vector<string> of docIDs
     map<string, vector<string>> postings_map;
     set<string> all_docs_set;
-    
+
     for (const auto &term_entry : inverted_index)
     {
         const string &term = term_entry.first;
         vector<string> docs;
-        
+
         for (const auto &doc_entry : term_entry.second)
         {
             docs.push_back(doc_entry.first);
             all_docs_set.insert(doc_entry.first);
         }
-        
+
         sort(docs.begin(), docs.end());
         postings_map[term] = docs;
     }
-    
+
     // Build universe: sorted vector<string> of all docIDs
     vector<string> universe(all_docs_set.begin(), all_docs_set.end());
     sort(universe.begin(), universe.end());
-    
+
     // Create output directory if it doesn't exist
-    // Note: Using simple approach since we can't use filesystem library
-    
+#ifdef _WIN32
+    _mkdir(output_dir.c_str());
+#else
+    system(("mkdir -p \"" + output_dir + "\"").c_str());
+#endif
+
     // Open output file
     string output_file_path = output_dir + "/docids.txt";
     ofstream output_file(output_file_path);
@@ -868,158 +909,83 @@ void boolean_retrieval(
         cerr << "Error: Cannot create output file: " << output_file_path << endl;
         return;
     }
-    
+
     // Process each query
     for (const auto &query_pair : queries)
     {
         const string &qid = query_pair.first;
         const string &title = query_pair.second;
-        
+
         // Preprocess query
         vector<string> processed = preprocess_query(title, stopwords);
         if (processed.empty())
         {
             continue; // Skip empty queries
         }
-        
+
         // Convert to postfix
-        vector<string> postfix = QueryProcessor::infix_to_postfix(processed);
-        
+        vector<string> postfix = infix_to_postfix(processed);
+
         // Build tree
-        QueryNode *root = QueryProcessor::build_tree(postfix);
+        QueryNode *root = build_tree(postfix);
         if (root == nullptr)
         {
             cerr << "Warning: Failed to parse query " << qid << ": \"" << title << "\", skipping." << endl;
             continue;
         }
-        
+
         // Evaluate query
         vector<string> results = evaluate_tree_with_postings(root, postings_map, universe);
-        
+
         // Sort results lexicographically (should already be sorted from set operations)
         sort(results.begin(), results.end());
-        
+
         // Write 4-column format output: qid docid rank score
         for (size_t i = 0; i < results.size(); i++)
         {
             int rank = i + 1; // 1-based ranking
             output_file << qid << " " << results[i] << " " << rank << " 1" << endl;
         }
-        
+
         // Clean up tree
         delete root;
     }
-    
+
     output_file.close();
     cout << "Boolean retrieval completed. Results written to: " << output_file_path << endl;
 }
 
-// Test function for Task 4.1, 4.2, 4.3, and 4.4
+// Main function as required by assignment
 int main(int argc, char *argv[])
 {
-    if (argc < 2)
+    if (argc != 4)
     {
-        cerr << "Usage: " << argv[0] << " <compressed_dir> [test_query]" << endl;
-        cerr << "       " << argv[0] << " <compressed_dir> --batch <query_file> [output_dir]" << endl;
-        cerr << "Example: " << argv[0] << " mock_corpus/compressed_dir_test" << endl;
-        cerr << "Example: " << argv[0] << " mock_corpus/compressed_dir_test \"jaguar NOT car\"" << endl;
-        cerr << "Example: " << argv[0] << " mock_corpus/compressed_dir_test --batch test_queries.json" << endl;
-        cerr << "Example: " << argv[0] << " mock_corpus/compressed_dir_test --batch test_queries.json custom_output" << endl;
+        cerr << "Usage: " << argv[0] << " <COMPRESSED_DIR> <QUERY_FILE_PATH> <OUTPUT_DIR>" << endl;
         return 1;
     }
 
     string compressed_dir = argv[1];
+    string query_file_path = argv[2];
+    string output_dir = argv[3];
 
-    // Task 4.1: Test decompression
-    cout << "=== Task 4.1: Decompression ===" << endl;
-    cout << "Decompressing index from: " << compressed_dir << endl;
+    // Create output directory if it doesn't exist
+#ifdef _WIN32
+    _mkdir(output_dir.c_str());
+#else
+    system(("mkdir -p \"" + output_dir + "\"").c_str());
+#endif
 
+    // Task 4.1: Decompress index
     auto index = decompress_index(compressed_dir);
-
-    cout << "Decompressed index with " << index.size() << " terms." << endl;
-    cout << "Decompressed index saved to: " << compressed_dir << "/decompressed_index.json" << endl;
-
-    // Task 4.2: Test query preprocessing (if query provided)
-    if (argc >= 3 && string(argv[2]) != "--batch")
+    
+    if (index.empty())
     {
-        cout << "\n=== Task 4.2: Query Preprocessing ===" << endl;
-        string test_query = argv[2];
-        cout << "Input query: \"" << test_query << "\"" << endl;
-
-        // Load stopwords (reuse from existing setup)
-        unordered_set<string> stopwords;
-        ifstream stopword_file("mock_corpus/stopwords.txt");
-        if (stopword_file.is_open())
-        {
-            string word;
-            while (getline(stopword_file, word))
-            {
-                stopwords.insert(word);
-            }
-            stopword_file.close();
-        }
-
-        vector<string> processed = preprocess_query(test_query, stopwords);
-
-        // Convert processed tokens to postfix and build tree
-        vector<string> postfix = QueryProcessor::infix_to_postfix(processed);
-        QueryNode *root = QueryProcessor::build_tree(postfix);
-
-        if (root == nullptr)
-        {
-            cout << "Error: Malformed query expression!" << endl;
-            return 1;
-        }
-
-        // Evaluate the query tree
-        vector<string> results = QueryProcessor::evaluate_tree(root, index);
-
-        // Print the query tree for debugging
-        cout << "Processed tokens: [";
-        for (size_t i = 0; i < processed.size(); i++)
-        {
-            if (i > 0)
-                cout << ", ";
-            cout << "\"" << processed[i] << "\"";
-        }
-        cout << "]" << endl;
-
-        cout << "\nQuery results: [";
-        for (size_t i = 0; i < results.size(); i++)
-        {
-            if (i > 0)
-                cout << ", ";
-            cout << "\"" << results[i] << "\"";
-        }
-        cout << "]" << endl;
-
-        cout << "\nPostfix notation: [";
-        for (size_t i = 0; i < postfix.size(); i++)
-        {
-            if (i > 0)
-                cout << ", ";
-            cout << "\"" << postfix[i] << "\"";
-        }
-        cout << "]\n\n";
-
-        cout << "Query Tree Structure:\n";
-        print_tree(root);
-        cout << "\n";
-
-        delete root; // Free the query tree
-    }
-    // Task 4.4: Boolean retrieval batch processing
-    else if ((argc == 4 || argc == 5) && string(argv[2]) == "--batch")
-    {
-        cout << "\n=== Task 4.4: Boolean Retrieval ===" << endl;
-        string query_file = argv[3];
-        string output_dir = (argc == 5) ? argv[4] : "mock_corpus";
-        
-        cout << "Processing queries from: " << query_file << endl;
-        cout << "Output directory: " << output_dir << endl;
-        
-        boolean_retrieval(index, query_file, output_dir);
+        cerr << "Error: Failed to decompress index from " << compressed_dir << endl;
+        return 1;
     }
 
+    // Task 4.2, 4.3, 4.4: Process queries and perform boolean retrieval
+    boolean_retrieval(index, query_file_path, output_dir);
+    
     return 0;
 }
