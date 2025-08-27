@@ -10,22 +10,24 @@
 #include <set>
 #include <stack>
 #ifdef _WIN32
-    #include <direct.h>
+#include <direct.h>
 #else
-    #include <sys/stat.h>
+#include <sys/stat.h>
 #endif
 #include "tokenizer.h"
 
 using namespace std;
 
 // QueryNode structure for AST
-struct QueryNode {
-    string value;  // operator or term
-    QueryNode* left;
-    QueryNode* right;
-    
+struct QueryNode
+{
+    string value; // operator or term
+    QueryNode *left;
+    QueryNode *right;
+
     QueryNode(string v) : value(v), left(nullptr), right(nullptr) {}
-    ~QueryNode() {
+    ~QueryNode()
+    {
         delete left;
         delete right;
     }
@@ -278,14 +280,14 @@ vector<string> preprocess_query(const string &title, const unordered_set<string>
 
 // Required function declarations for assignment compliance
 map<string, map<string, vector<uint32_t>>> decompress_index(const string &compressed_dir);
-QueryNode* query_parser(vector<string> query_tokens);
+QueryNode *query_parser(vector<string> query_tokens);
 void boolean_retrieval(const map<string, map<string, vector<uint32_t>>> &inverted_index, const string &path_to_query_file, const string &output_dir);
 
 // Helper functions for query processing
 int get_precedence(const string &op);
 bool is_right_associative(const string &op);
 vector<string> infix_to_postfix(const vector<string> &tokens);
-QueryNode* build_tree(const vector<string> &postfix);
+QueryNode *build_tree(const vector<string> &postfix);
 vector<string> evaluate_tree(QueryNode *root, const map<string, map<string, vector<uint32_t>>> &index);
 
 // Main decompression function
@@ -646,11 +648,11 @@ vector<string> evaluate_tree(QueryNode *root,
 }
 
 // Query parser function as required by assignment (Task 4.3)
-QueryNode* query_parser(vector<string> query_tokens)
+QueryNode *query_parser(vector<string> query_tokens)
 {
     // Convert infix to postfix
     vector<string> postfix = infix_to_postfix(query_tokens);
-    
+
     // Build and return AST
     return build_tree(postfix);
 }
@@ -977,7 +979,7 @@ int main(int argc, char *argv[])
 
     // Task 4.1: Decompress index
     auto index = decompress_index(compressed_dir);
-    
+
     if (index.empty())
     {
         cerr << "Error: Failed to decompress index from " << compressed_dir << endl;
@@ -986,6 +988,6 @@ int main(int argc, char *argv[])
 
     // Task 4.2, 4.3, 4.4: Process queries and perform boolean retrieval
     boolean_retrieval(index, query_file_path, output_dir);
-    
+
     return 0;
 }

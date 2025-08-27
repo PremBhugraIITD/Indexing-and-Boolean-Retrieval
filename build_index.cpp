@@ -12,12 +12,12 @@
 #include <cstdint>
 #include <sstream>
 #ifdef _WIN32
-    #include <direct.h>
-    #include <io.h>
-    #include <windows.h>
+#include <direct.h>
+#include <io.h>
+#include <windows.h>
 #else
-    #include <sys/stat.h>
-    #include <unistd.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #endif
 #include "tokenizer.h"
 
@@ -78,7 +78,7 @@ typedef unordered_map<string, unordered_map<string, vector<int>>> inverted_index
 // Function to build inverted index as required by assignment
 inverted_index build_index(string collection_dir, string vocab_path);
 
-// Function to save inverted index as required by assignment  
+// Function to save inverted index as required by assignment
 void save_index(inverted_index index, string index_dir);
 
 // Function to compress inverted index as required by assignment
@@ -111,14 +111,14 @@ int main(int argc, char *argv[])
 
     // Build the inverted index using required function
     auto index = build_index(corpus_dir, vocab_file);
-    
+
     // Save the uncompressed index using required function
     save_index(index, index_dir);
-    
+
     // Compress and save the compressed index using required functions
     string index_json_path = index_dir + "/index.json";
     compress_index(index_json_path, compressed_dir);
-    
+
     return 0;
 }
 
@@ -132,9 +132,10 @@ inverted_index build_index(string collection_dir, string vocab_path)
     unordered_set<string> stopwords;
     string vocab_dir = vocab_path.substr(0, vocab_path.find_last_of("/\\"));
     string stopwords_path = vocab_dir + "/stopwords.txt";
-    
+
     ifstream stopwords_file(stopwords_path);
-    if (stopwords_file.is_open()) {
+    if (stopwords_file.is_open())
+    {
         stopwords = load_stopwords(stopwords_path);
     }
 
@@ -147,18 +148,21 @@ inverted_index build_index(string collection_dir, string vocab_path)
 #else
     string command = "ls \"" + collection_dir + "\" > " + temp_file;
 #endif
-    
+
     system(command.c_str());
-    
+
     // Read the file list
     ifstream file_list(temp_file);
     string filename;
-    while (getline(file_list, filename)) {
-        if (filename.empty()) continue;
-        
+    while (getline(file_list, filename))
+    {
+        if (filename.empty())
+            continue;
+
         string filepath = collection_dir + "/" + filename;
         ifstream fin(filepath);
-        if (!fin.is_open()) continue;
+        if (!fin.is_open())
+            continue;
 
         string line, content;
         while (getline(fin, line))
@@ -166,12 +170,16 @@ inverted_index build_index(string collection_dir, string vocab_path)
         auto tokens = tokenize(content, stopwords);
         cerr << "Doc: " << filename << "\n";
         int pos = 0;
-        for (auto &tok : tokens) {
+        for (auto &tok : tokens)
+        {
             cerr << "  token: [" << tok << "]";
-            if (V.find(tok) != V.end()) {
+            if (V.find(tok) != V.end())
+            {
                 index[tok][filename].push_back(pos);
                 cerr << " in vocab\n";
-            } else {
+            }
+            else
+            {
                 cerr << " not in vocab\n";
             }
             ++pos;
@@ -179,7 +187,7 @@ inverted_index build_index(string collection_dir, string vocab_path)
         fin.close();
     }
     file_list.close();
-    
+
     // Clean up temp file
     remove(temp_file.c_str());
 
@@ -204,7 +212,8 @@ void save_index(inverted_index index, string index_dir)
     sort(terms.begin(), terms.end());
 
     out << "{\n";
-    for (size_t t = 0; t < terms.size(); t++) {
+    for (size_t t = 0; t < terms.size(); t++)
+    {
         const string &term = terms[t];
         out << "  \"" << json_escape(term) << "\": {\n";
 
@@ -213,11 +222,14 @@ void save_index(inverted_index index, string index_dir)
             docs.push_back(kv.first);
         sort(docs.begin(), docs.end());
 
-        for (size_t d = 0; d < docs.size(); d++) {
+        for (size_t d = 0; d < docs.size(); d++)
+        {
             const string &doc = docs[d];
             out << "    \"" << json_escape(doc) << "\": [";
-            for (size_t i = 0; i < index[term][doc].size(); i++) {
-                if (i) out << ", ";
+            for (size_t i = 0; i < index[term][doc].size(); i++)
+            {
+                if (i)
+                    out << ", ";
                 out << index[term][doc][i];
             }
             out << "]";
