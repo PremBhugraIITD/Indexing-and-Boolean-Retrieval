@@ -127,68 +127,63 @@ inverted_index build_index(string collection_dir, string vocab_path)
 
     inverted_index index;
 
-    // Find JSON corpus file in the collection directory
+    // Get all files in the collection directory
     vector<string> corpus_files = get_files_in_directory(collection_dir);
-    string corpus_file_path;
 
-    // Look for JSON file in collection directory
-    for (const string &file_path : corpus_files)
+    if (corpus_files.empty())
     {
-        if (file_path.find(".json") != string::npos)
-        {
-            corpus_file_path = file_path;
-            break;
-        }
-    }
-
-    if (corpus_file_path.empty())
-    {
-        cerr << "Error: No JSON corpus file found in directory: " << collection_dir << endl;
+        cerr << "Error: No files found in collection directory: " << collection_dir << endl;
         return index;
     }
 
-    // Open the JSON corpus file
-    ifstream corpus_file(corpus_file_path);
-    if (!corpus_file.is_open())
+    // Process each file in the corpus directory
+    for (const string &corpus_file_path : corpus_files)
     {
-        cerr << "Error: Cannot open corpus file: " << corpus_file_path << endl;
-        return index;
-    }
-
-    string json_line;
-    while (getline(corpus_file, json_line))
-    {
-        if (json_line.empty())
-            continue;
-
-        // Parse JSON document
-        Document doc = parse_json_document(json_line);
-        if (doc.doc_id.empty() || doc.content.empty())
+        cerr << "Processing corpus file: " << corpus_file_path << endl;
+        
+        // Open the corpus file
+        ifstream corpus_file(corpus_file_path);
+        if (!corpus_file.is_open())
         {
-            cerr << "Warning: Skipping invalid JSON line" << endl;
+            cerr << "Warning: Cannot open corpus file: " << corpus_file_path << ", skipping" << endl;
             continue;
         }
 
-        // Tokenize the content
-        auto tokens = tokenize(doc.content, stopwords);
-        cerr << "Doc: " << doc.doc_id << "\n";
-        int pos = 0;
-        for (auto &tok : tokens)
+        string json_line;
+        while (getline(corpus_file, json_line))
         {
-            cerr << "  token: [" << tok << "]";
-            if (V.find(tok) != V.end())
+            if (json_line.empty())
+                continue;
+
+            // Parse JSON document
+            Document doc = parse_json_document(json_line);
+            if (doc.doc_id.empty() || doc.content.empty())
             {
-                index[tok][doc.doc_id].push_back(pos);
-                cerr << " in vocab\n";
+                cerr << "Warning: Skipping invalid JSON line in file: " << corpus_file_path << endl;
+                continue;
             }
-            else
+
+            // Tokenize the content
+            auto tokens = tokenize(doc.content, stopwords);
+            cerr << "Doc: " << doc.doc_id << "\n";
+            int pos = 0;
+            for (auto &tok : tokens)
             {
-                cerr << " not in vocab\n";
+                cerr << "  token: [" << tok << "]";
+                if (V.find(tok) != V.end())
+                {
+                    index[tok][doc.doc_id].push_back(pos);
+                    cerr << " in vocab\n";
+                }
+                else
+                {
+                    cerr << " not in vocab\n";
+                }
+                ++pos;
             }
-            ++pos;
         }
+        corpus_file.close();
     }
-    corpus_file.close();
 
     return index;
 }

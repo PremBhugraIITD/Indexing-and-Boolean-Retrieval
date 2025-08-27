@@ -67,55 +67,50 @@ void build_vocab(string corpus_dir, string stopwords_file, string vocab_dir)
     // Build vocabulary from JSON corpus
     set<string> vocab;
 
-    // Find JSON corpus file in the corpus directory
+    // Get all files in the corpus directory
     vector<string> corpus_files = get_files_in_directory(corpus_dir);
-    string corpus_file_path;
 
-    // Look for JSON file in corpus directory
-    for (const string &file_path : corpus_files)
+    if (corpus_files.empty())
     {
-        if (file_path.find(".json") != string::npos)
-        {
-            corpus_file_path = file_path;
-            break;
-        }
-    }
-
-    if (corpus_file_path.empty())
-    {
-        cerr << "Error: No JSON corpus file found in directory: " << corpus_dir << endl;
+        cerr << "Error: No files found in corpus directory: " << corpus_dir << endl;
         return;
     }
 
-    // Open the JSON corpus file
-    ifstream corpus_file(corpus_file_path);
-    if (!corpus_file.is_open())
-    {
-        cerr << "Error: Cannot open corpus file: " << corpus_file_path << endl;
-        return;
-    }
-
-    string json_line;
     int doc_count = 0;
-    while (getline(corpus_file, json_line))
+    // Process each file in the corpus directory
+    for (const string &corpus_file_path : corpus_files)
     {
-        if (json_line.empty())
-            continue;
-
-        // Parse JSON document
-        Document doc = parse_json_document(json_line);
-        if (doc.doc_id.empty() || doc.content.empty())
+        cout << "Processing corpus file: " << corpus_file_path << endl;
+        
+        // Open the corpus file
+        ifstream corpus_file(corpus_file_path);
+        if (!corpus_file.is_open())
         {
-            cerr << "Warning: Skipping invalid JSON line" << endl;
+            cerr << "Warning: Cannot open corpus file: " << corpus_file_path << ", skipping" << endl;
             continue;
         }
 
-        // Tokenize the content
-        vector<string> tokens = tokenize(doc.content, stopwords);
-        vocab.insert(tokens.begin(), tokens.end());
-        doc_count++;
+        string json_line;
+        while (getline(corpus_file, json_line))
+        {
+            if (json_line.empty())
+                continue;
+
+            // Parse JSON document
+            Document doc = parse_json_document(json_line);
+            if (doc.doc_id.empty() || doc.content.empty())
+            {
+                cerr << "Warning: Skipping invalid JSON line in file: " << corpus_file_path << endl;
+                continue;
+            }
+
+            // Tokenize the content
+            vector<string> tokens = tokenize(doc.content, stopwords);
+            vocab.insert(tokens.begin(), tokens.end());
+            doc_count++;
+        }
+        corpus_file.close();
     }
-    corpus_file.close();
 
     // Save vocabulary to vocab.txt
     string vocab_file_path = vocab_dir + "/vocab.txt";
