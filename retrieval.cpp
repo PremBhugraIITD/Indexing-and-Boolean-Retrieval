@@ -79,6 +79,49 @@ vector<string> parse_doc_map(const string &json_content)
     return docs;
 }
 
+// JSON unescaping function
+string unescape_json_string(const string &s)
+{
+    string result;
+    for (size_t i = 0; i < s.length(); i++)
+    {
+        if (s[i] == '\\' && i + 1 < s.length())
+        {
+            switch (s[i + 1])
+            {
+            case '"':
+                result += '"';
+                i++; // Skip next character
+                break;
+            case '\\':
+                result += '\\';
+                i++; // Skip next character
+                break;
+            case 'n':
+                result += '\n';
+                i++; // Skip next character
+                break;
+            case 'r':
+                result += '\r';
+                i++; // Skip next character
+                break;
+            case 't':
+                result += '\t';
+                i++; // Skip next character
+                break;
+            default:
+                result += s[i]; // Keep the backslash if not recognized
+                break;
+            }
+        }
+        else
+        {
+            result += s[i];
+        }
+    }
+    return result;
+}
+
 // Parse metadata.json manually
 map<string, pair<size_t, size_t>> parse_metadata(const string &json_content)
 {
@@ -98,7 +141,8 @@ map<string, pair<size_t, size_t>> parse_metadata(const string &json_content)
         if (line.length() >= 2 && line[0] == '"' && line.find("\": {") != string::npos)
         {
             size_t end_quote = line.find('"', 1);
-            current_term = line.substr(1, end_quote - 1);
+            string escaped_term = line.substr(1, end_quote - 1);
+            current_term = unescape_json_string(escaped_term); // Unescape the term
             has_offset = has_length = false;
         }
         // Look for offset
