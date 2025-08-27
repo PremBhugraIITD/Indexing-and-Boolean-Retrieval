@@ -514,10 +514,8 @@ void compress_index(string path_to_index_file, string path_to_compressed_files_d
 
         current_offset += compressed_data.size();
 
-        if (terms.size() <= 10 || find(terms.begin(), terms.begin() + min(5, (int)terms.size()), term) != terms.begin() + min(5, (int)terms.size()))
-        {
-            cout << "Compressed term '" << term << "': " << compressed_data.size() << " bytes" << endl;
-        }
+        // Print compression info for all terms
+        cout << "Compressed term '" << term << "': " << compressed_data.size() << " bytes" << endl;
     }
 
     postings_file.close();
