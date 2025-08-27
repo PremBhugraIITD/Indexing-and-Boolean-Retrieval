@@ -2,5 +2,5 @@
 3 doc3 1 1
 6 doc3 1 1
 10 docA 1 1
-10 doc2 1 1
-10 docB 2 1
+11 doc2 1 1
+11 docB 2 1
