@@ -8,3 +8,4 @@
 {"query_id": "8", "title": "study AND people", "description": "studies involving people", "narrative": "seeking research studies that involve people"}
 {"query_id": "9", "title": "coronavirus origin debated", "description": "debate about coronavirus origin", "narrative": "seeking information about the debate surrounding coronavirus origin"}
 {"query_id": "10", "title": "(covid OR coronavirus) AND NOT retrieval", "description": "covid or coronavirus but not retrieval", "narrative": "seeking information about covid or coronavirus but excluding information retrieval topics"}
+{"query_id": "10", "title": "# OR kirmada", "description": "covid or coronavirus but not retrieval", "narrative": "seeking information about covid or coronavirus but excluding information retrieval topics"}

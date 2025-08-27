@@ -20,6 +20,7 @@
 #include <unistd.h>
 #endif
 #include "tokenizer.h"
+#include "utilities.h"
 
 using namespace std;
 
@@ -31,16 +32,6 @@ unordered_set<string> load_vocab(const string &vocab_file)
     while (fin >> w)
         V.insert(w);
     return V;
-}
-
-unordered_set<string> load_stopwords(const string &stopwords_file)
-{
-    unordered_set<string> S;
-    ifstream fin(stopwords_file);
-    string w;
-    while (fin >> w)
-        S.insert(w);
-    return S;
 }
 
 string json_escape(const string &s)
@@ -101,13 +92,8 @@ int main(int argc, char *argv[])
     string compressed_dir = argv[4];
 
     // Create directories if they don't exist
-#ifdef _WIN32
-    _mkdir(index_dir.c_str());
-    _mkdir(compressed_dir.c_str());
-#else
-    system(("mkdir -p \"" + index_dir + "\"").c_str());
-    system(("mkdir -p \"" + compressed_dir + "\"").c_str());
-#endif
+    create_directory_if_not_exists(index_dir);
+    create_directory_if_not_exists(compressed_dir);
 
     // Build the inverted index using required function
     auto index = build_index(corpus_dir, vocab_file);
@@ -141,41 +127,58 @@ inverted_index build_index(string collection_dir, string vocab_path)
 
     inverted_index index;
 
-    // Use system command to list files and save to temp file
-    string temp_file = "temp_filelist.txt";
-#ifdef _WIN32
-    string command = "dir /b \"" + collection_dir + "\" > " + temp_file;
-#else
-    string command = "ls \"" + collection_dir + "\" > " + temp_file;
-#endif
+    // Find JSON corpus file in the collection directory
+    vector<string> corpus_files = get_files_in_directory(collection_dir);
+    string corpus_file_path;
 
-    system(command.c_str());
-
-    // Read the file list
-    ifstream file_list(temp_file);
-    string filename;
-    while (getline(file_list, filename))
+    // Look for JSON file in collection directory
+    for (const string &file_path : corpus_files)
     {
-        if (filename.empty())
+        if (file_path.find(".json") != string::npos)
+        {
+            corpus_file_path = file_path;
+            break;
+        }
+    }
+
+    if (corpus_file_path.empty())
+    {
+        cerr << "Error: No JSON corpus file found in directory: " << collection_dir << endl;
+        return index;
+    }
+
+    // Open the JSON corpus file
+    ifstream corpus_file(corpus_file_path);
+    if (!corpus_file.is_open())
+    {
+        cerr << "Error: Cannot open corpus file: " << corpus_file_path << endl;
+        return index;
+    }
+
+    string json_line;
+    while (getline(corpus_file, json_line))
+    {
+        if (json_line.empty())
             continue;
 
-        string filepath = collection_dir + "/" + filename;
-        ifstream fin(filepath);
-        if (!fin.is_open())
+        // Parse JSON document
+        Document doc = parse_json_document(json_line);
+        if (doc.doc_id.empty() || doc.content.empty())
+        {
+            cerr << "Warning: Skipping invalid JSON line" << endl;
             continue;
+        }
 
-        string line, content;
-        while (getline(fin, line))
-            content += line + " ";
-        auto tokens = tokenize(content, stopwords);
-        cerr << "Doc: " << filename << "\n";
+        // Tokenize the content
+        auto tokens = tokenize(doc.content, stopwords);
+        cerr << "Doc: " << doc.doc_id << "\n";
         int pos = 0;
         for (auto &tok : tokens)
         {
             cerr << "  token: [" << tok << "]";
             if (V.find(tok) != V.end())
             {
-                index[tok][filename].push_back(pos);
+                index[tok][doc.doc_id].push_back(pos);
                 cerr << " in vocab\n";
             }
             else
@@ -184,12 +187,8 @@ inverted_index build_index(string collection_dir, string vocab_path)
             }
             ++pos;
         }
-        fin.close();
     }
-    file_list.close();
-
-    // Clean up temp file
-    remove(temp_file.c_str());
+    corpus_file.close();
 
     return index;
 }
@@ -197,11 +196,7 @@ inverted_index build_index(string collection_dir, string vocab_path)
 void save_index(inverted_index index, string index_dir)
 {
     // Create directory if needed
-#ifdef _WIN32
-    _mkdir(index_dir.c_str());
-#else
-    system(("mkdir -p \"" + index_dir + "\"").c_str());
-#endif
+    create_directory_if_not_exists(index_dir);
 
     string out_path = index_dir + "/index.json";
     ofstream out(out_path);

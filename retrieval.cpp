@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #endif
 #include "tokenizer.h"
+#include "utilities.h"
 
 using namespace std;
 
@@ -897,11 +898,7 @@ void boolean_retrieval(
     sort(universe.begin(), universe.end());
 
     // Create output directory if it doesn't exist
-#ifdef _WIN32
-    _mkdir(output_dir.c_str());
-#else
-    system(("mkdir -p \"" + output_dir + "\"").c_str());
-#endif
+    create_directory_if_not_exists(output_dir);
 
     // Open output file
     string output_file_path = output_dir + "/docids.txt";
@@ -971,11 +968,7 @@ int main(int argc, char *argv[])
     string output_dir = argv[3];
 
     // Create output directory if it doesn't exist
-#ifdef _WIN32
-    _mkdir(output_dir.c_str());
-#else
-    system(("mkdir -p \"" + output_dir + "\"").c_str());
-#endif
+    create_directory_if_not_exists(output_dir);
 
     // Task 4.1: Decompress index
     auto index = decompress_index(compressed_dir);

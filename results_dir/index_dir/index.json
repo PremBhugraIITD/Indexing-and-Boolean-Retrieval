@@ -1,76 +1,332 @@
 {
   "#": {
-    "docA.txt": [3]
+    "doc2": [5, 6],
+    "docB": [4]
   },
-  "$": {
-    "docA.txt": [5]
+  "%": {
+    "docB": [5]
   },
-  "-": {
-    "docA.txt": [4]
+  "a": {
+    "doc1": [5]
   },
-  "co-op": {
-    "docA.txt": [0]
+  "accurate": {
+    "doc2": [32]
+  },
+  "affects": {
+    "doc1": [14]
+  },
+  "algorithms": {
+    "doc2": [9],
+    "doc3": [18]
+  },
+  "analyze": {
+    "doc2": [21]
+  },
+  "and": {
+    "doc1": [1, 16, 29],
+    "doc2": [24],
+    "doc3": [16],
+    "docA": [17],
+    "docB": [14, 21]
+  },
+  "applications.": {
+    "docB": [27]
+  },
+  "are": {
+    "doc3": [19],
+    "docB": [24]
+  },
+  "assist": {
+    "doc2": [28]
+  },
+  "been": {
+    "docA": [20]
+  },
+  "boolean": {
+    "doc3": [14]
+  },
+  "breathing.": {
+    "doc1": [31]
+  },
+  "by": {
+    "doc1": [9]
+  },
+  "can": {
+    "doc1": [17],
+    "doc2": [20]
+  },
+  "cause": {
+    "doc1": [18]
+  },
+  "caused": {
+    "doc1": [8]
+  },
+  "collections.": {
+    "doc3": [13]
+  },
+  "components": {
+    "doc3": [21]
+  },
+  "computers": {
+    "docB": [11]
+  },
+  "controlling": {
+    "docA": [23]
+  },
+  "coordinated": {
+    "docA": [7]
   },
   "coronavirus": {
-    "doc2.txt": [1]
+    "docA": [0, 3]
   },
-  "covid": {
-    "doc1.txt": [0]
+  "cough,": {
+    "doc1": [28]
   },
-  "debated": {
-    "doc2.txt": [3]
+  "covid-": {
+    "doc1": [0, 4]
   },
-  "delhi": {
-    "docB.txt": [4]
+  "crucial": {
+    "docA": [21]
   },
-  "fun": {
-    "docB.txt": [2]
+  "data": {
+    "doc2": [26]
   },
-  "iit": {
-    "docB.txt": [3]
+  "deep": {
+    "doc2": [17]
+  },
+  "diagnoses.": {
+    "doc2": [33]
+  },
+  "diagnosis": {
+    "doc2": [4]
+  },
+  "diagnosis.": {
+    "doc2": [16]
+  },
+  "difficulty": {
+    "doc1": [30]
+  },
+  "disease": {
+    "doc1": [7, 12]
+  },
+  "distancing": {
+    "docA": [16]
+  },
+  "doctors": {
+    "doc2": [29]
+  },
+  "documents": {
+    "doc3": [10]
+  },
+  "early": {
+    "doc1": [24]
+  },
+  "efforts.": {
+    "docA": [10]
+  },
+  "enable": {
+    "docB": [10]
+  },
+  "engines.": {
+    "doc3": [23]
+  },
+  "fever,": {
+    "doc1": [27]
+  },
+  "find": {
+    "doc3": [8]
+  },
+  "from": {
+    "doc3": [11]
+  },
+  "fundamental": {
+    "doc3": [20]
+  },
+  "global": {
+    "docA": [8]
+  },
+  "great": {
+    "doc2": [12]
+  },
+  "has": {
+    "docA": [5]
+  },
+  "have": {
+    "doc2": [10],
+    "docA": [19]
+  },
+  "health": {
+    "docA": [12]
+  },
+  "help": {
+    "doc3": [6]
+  },
+  "human": {
+    "docB": [16]
+  },
+  "images": {
+    "doc2": [23]
+  },
+  "important": {
+    "docB": [25]
   },
   "in": {
-    "doc1.txt": [2]
+    "doc1": [21],
+    "doc2": [2, 14, 30],
+    "docA": [22]
+  },
+  "include": {
+    "doc1": [26]
+  },
+  "including": {
+    "docA": [14]
+  },
+  "indexing,": {
+    "docB": [20]
+  },
+  "infections": {
+    "doc1": [3]
   },
   "information": {
-    "doc3.txt": [3],
-    "docB.txt": [0]
+    "doc3": [0, 3]
   },
-  "off": {
-    "docA.txt": [6]
+  "language": {
+    "docB": [1, 7]
   },
-  "origin": {
-    "doc2.txt": [0]
+  "language.": {
+    "docB": [17]
   },
-  "originated": {
-    "doc1.txt": [1]
+  "large": {
+    "doc3": [12]
   },
-  "people": {
-    "doc3.txt": [1]
+  "learning": {
+    "doc2": [1, 8, 18]
   },
-  "reopens": {
-    "docA.txt": [1]
+  "lungs": {
+    "doc1": [15]
+  },
+  "machine": {
+    "doc2": [0, 7]
+  },
+  "making": {
+    "doc2": [31]
+  },
+  "measures": {
+    "docA": [13]
+  },
+  "medical": {
+    "doc2": [3, 15, 22]
+  },
+  "models": {
+    "doc2": [19]
+  },
+  "natural": {
+    "docB": [0, 6]
+  },
+  "nlp": {
+    "docB": [26]
+  },
+  "pandemic": {
+    "docA": [1, 4]
+  },
+  "patient": {
+    "doc2": [25]
+  },
+  "patients.": {
+    "doc1": [23]
+  },
+  "pneumonia": {
+    "doc1": [20]
+  },
+  "primarily": {
+    "doc1": [13]
+  },
+  "process": {
+    "docB": [15]
+  },
+  "processing": {
+    "docB": [2, 8, 23]
+  },
+  "promise": {
+    "doc2": [13]
+  },
+  "public": {
+    "docA": [11]
+  },
+  "queries": {
+    "doc3": [15]
+  },
+  "query": {
+    "docB": [22]
+  },
+  "ranking": {
+    "doc3": [17]
+  },
+  "relevant": {
+    "doc3": [9]
+  },
+  "required": {
+    "docA": [6]
+  },
+  "respiratory": {
+    "doc1": [2, 6]
+  },
+  "response": {
+    "docA": [2, 9]
   },
   "retrieval": {
-    "doc3.txt": [4],
-    "docB.txt": [1]
+    "doc3": [1, 4]
   },
-  "room-": {
-    "docA.txt": [2]
+  "sars-cov-": {
+    "doc1": [10]
+  },
+  "search": {
+    "doc3": [22]
+  },
+  "severe": {
+    "doc1": [19]
+  },
+  "shown": {
+    "doc2": [11]
+  },
+  "social": {
+    "docA": [15]
   },
   "some": {
-    "doc3.txt": [0]
+    "doc1": [22]
   },
-  "study": {
-    "doc3.txt": [2]
+  "spread.": {
+    "docA": [24]
   },
-  "today!": {
-    "docA.txt": [7]
+  "symptoms": {
+    "doc1": [25]
   },
-  "widely": {
-    "doc2.txt": [2]
+  "systems": {
+    "doc3": [2, 5]
   },
-  "wuhan": {
-    "doc1.txt": [3]
+  "techniques": {
+    "docB": [3, 9]
+  },
+  "text": {
+    "docB": [18]
+  },
+  "to": {
+    "doc2": [27],
+    "docB": [12]
+  },
+  "tokenization,": {
+    "docB": [19]
+  },
+  "understand": {
+    "docB": [13]
+  },
+  "users": {
+    "doc3": [7]
+  },
+  "vaccination": {
+    "docA": [18]
+  },
+  "virus.": {
+    "doc1": [11]
   }
 }

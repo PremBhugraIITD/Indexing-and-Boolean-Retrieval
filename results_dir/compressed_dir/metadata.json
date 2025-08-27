@@ -1,98 +1,426 @@
 {
   "#": {
     "offset": 0,
-    "length": 4
+    "length": 8
   },
-  "$": {
-    "offset": 4,
-    "length": 4
-  },
-  "-": {
+  "%": {
     "offset": 8,
     "length": 4
   },
-  "co-op": {
+  "a": {
     "offset": 12,
     "length": 4
   },
-  "coronavirus": {
+  "accurate": {
     "offset": 16,
     "length": 4
   },
-  "covid": {
+  "affects": {
     "offset": 20,
     "length": 4
   },
-  "debated": {
+  "algorithms": {
     "offset": 24,
+    "length": 7
+  },
+  "analyze": {
+    "offset": 31,
     "length": 4
   },
-  "delhi": {
-    "offset": 28,
+  "and": {
+    "offset": 35,
+    "length": 19
+  },
+  "applications.": {
+    "offset": 54,
     "length": 4
   },
-  "fun": {
-    "offset": 32,
+  "are": {
+    "offset": 58,
+    "length": 7
+  },
+  "assist": {
+    "offset": 65,
     "length": 4
   },
-  "iit": {
-    "offset": 36,
+  "been": {
+    "offset": 69,
+    "length": 4
+  },
+  "boolean": {
+    "offset": 73,
+    "length": 4
+  },
+  "breathing.": {
+    "offset": 77,
+    "length": 4
+  },
+  "by": {
+    "offset": 81,
+    "length": 4
+  },
+  "can": {
+    "offset": 85,
+    "length": 7
+  },
+  "cause": {
+    "offset": 92,
+    "length": 4
+  },
+  "caused": {
+    "offset": 96,
+    "length": 4
+  },
+  "collections.": {
+    "offset": 100,
+    "length": 4
+  },
+  "components": {
+    "offset": 104,
+    "length": 4
+  },
+  "computers": {
+    "offset": 108,
+    "length": 4
+  },
+  "controlling": {
+    "offset": 112,
+    "length": 4
+  },
+  "coordinated": {
+    "offset": 116,
+    "length": 4
+  },
+  "coronavirus": {
+    "offset": 120,
+    "length": 5
+  },
+  "cough,": {
+    "offset": 125,
+    "length": 4
+  },
+  "covid-": {
+    "offset": 129,
+    "length": 5
+  },
+  "crucial": {
+    "offset": 134,
+    "length": 4
+  },
+  "data": {
+    "offset": 138,
+    "length": 4
+  },
+  "deep": {
+    "offset": 142,
+    "length": 4
+  },
+  "diagnoses.": {
+    "offset": 146,
+    "length": 4
+  },
+  "diagnosis": {
+    "offset": 150,
+    "length": 4
+  },
+  "diagnosis.": {
+    "offset": 154,
+    "length": 4
+  },
+  "difficulty": {
+    "offset": 158,
+    "length": 4
+  },
+  "disease": {
+    "offset": 162,
+    "length": 5
+  },
+  "distancing": {
+    "offset": 167,
+    "length": 4
+  },
+  "doctors": {
+    "offset": 171,
+    "length": 4
+  },
+  "documents": {
+    "offset": 175,
+    "length": 4
+  },
+  "early": {
+    "offset": 179,
+    "length": 4
+  },
+  "efforts.": {
+    "offset": 183,
+    "length": 4
+  },
+  "enable": {
+    "offset": 187,
+    "length": 4
+  },
+  "engines.": {
+    "offset": 191,
+    "length": 4
+  },
+  "fever,": {
+    "offset": 195,
+    "length": 4
+  },
+  "find": {
+    "offset": 199,
+    "length": 4
+  },
+  "from": {
+    "offset": 203,
+    "length": 4
+  },
+  "fundamental": {
+    "offset": 207,
+    "length": 4
+  },
+  "global": {
+    "offset": 211,
+    "length": 4
+  },
+  "great": {
+    "offset": 215,
+    "length": 4
+  },
+  "has": {
+    "offset": 219,
+    "length": 4
+  },
+  "have": {
+    "offset": 223,
+    "length": 7
+  },
+  "health": {
+    "offset": 230,
+    "length": 4
+  },
+  "help": {
+    "offset": 234,
+    "length": 4
+  },
+  "human": {
+    "offset": 238,
+    "length": 4
+  },
+  "images": {
+    "offset": 242,
+    "length": 4
+  },
+  "important": {
+    "offset": 246,
     "length": 4
   },
   "in": {
-    "offset": 40,
+    "offset": 250,
+    "length": 12
+  },
+  "include": {
+    "offset": 262,
+    "length": 4
+  },
+  "including": {
+    "offset": 266,
+    "length": 4
+  },
+  "indexing,": {
+    "offset": 270,
+    "length": 4
+  },
+  "infections": {
+    "offset": 274,
     "length": 4
   },
   "information": {
-    "offset": 44,
-    "length": 7
+    "offset": 278,
+    "length": 5
   },
-  "off": {
-    "offset": 51,
+  "language": {
+    "offset": 283,
+    "length": 5
+  },
+  "language.": {
+    "offset": 288,
     "length": 4
   },
-  "origin": {
-    "offset": 55,
+  "large": {
+    "offset": 292,
     "length": 4
   },
-  "originated": {
-    "offset": 59,
+  "learning": {
+    "offset": 296,
+    "length": 6
+  },
+  "lungs": {
+    "offset": 302,
     "length": 4
   },
-  "people": {
-    "offset": 63,
+  "machine": {
+    "offset": 306,
+    "length": 5
+  },
+  "making": {
+    "offset": 311,
     "length": 4
   },
-  "reopens": {
-    "offset": 67,
+  "measures": {
+    "offset": 315,
     "length": 4
+  },
+  "medical": {
+    "offset": 319,
+    "length": 6
+  },
+  "models": {
+    "offset": 325,
+    "length": 4
+  },
+  "natural": {
+    "offset": 329,
+    "length": 5
+  },
+  "nlp": {
+    "offset": 334,
+    "length": 4
+  },
+  "pandemic": {
+    "offset": 338,
+    "length": 5
+  },
+  "patient": {
+    "offset": 343,
+    "length": 4
+  },
+  "patients.": {
+    "offset": 347,
+    "length": 4
+  },
+  "pneumonia": {
+    "offset": 351,
+    "length": 4
+  },
+  "primarily": {
+    "offset": 355,
+    "length": 4
+  },
+  "process": {
+    "offset": 359,
+    "length": 4
+  },
+  "processing": {
+    "offset": 363,
+    "length": 6
+  },
+  "promise": {
+    "offset": 369,
+    "length": 4
+  },
+  "public": {
+    "offset": 373,
+    "length": 4
+  },
+  "queries": {
+    "offset": 377,
+    "length": 4
+  },
+  "query": {
+    "offset": 381,
+    "length": 4
+  },
+  "ranking": {
+    "offset": 385,
+    "length": 4
+  },
+  "relevant": {
+    "offset": 389,
+    "length": 4
+  },
+  "required": {
+    "offset": 393,
+    "length": 4
+  },
+  "respiratory": {
+    "offset": 397,
+    "length": 5
+  },
+  "response": {
+    "offset": 402,
+    "length": 5
   },
   "retrieval": {
-    "offset": 71,
-    "length": 7
+    "offset": 407,
+    "length": 5
   },
-  "room-": {
-    "offset": 78,
+  "sars-cov-": {
+    "offset": 412,
+    "length": 4
+  },
+  "search": {
+    "offset": 416,
+    "length": 4
+  },
+  "severe": {
+    "offset": 420,
+    "length": 4
+  },
+  "shown": {
+    "offset": 424,
+    "length": 4
+  },
+  "social": {
+    "offset": 428,
     "length": 4
   },
   "some": {
-    "offset": 82,
+    "offset": 432,
     "length": 4
   },
-  "study": {
-    "offset": 86,
+  "spread.": {
+    "offset": 436,
     "length": 4
   },
-  "today!": {
-    "offset": 90,
+  "symptoms": {
+    "offset": 440,
     "length": 4
   },
-  "widely": {
-    "offset": 94,
+  "systems": {
+    "offset": 444,
+    "length": 5
+  },
+  "techniques": {
+    "offset": 449,
+    "length": 5
+  },
+  "text": {
+    "offset": 454,
     "length": 4
   },
-  "wuhan": {
-    "offset": 98,
+  "to": {
+    "offset": 458,
+    "length": 7
+  },
+  "tokenization,": {
+    "offset": 465,
+    "length": 4
+  },
+  "understand": {
+    "offset": 469,
+    "length": 4
+  },
+  "users": {
+    "offset": 473,
+    "length": 4
+  },
+  "vaccination": {
+    "offset": 477,
+    "length": 4
+  },
+  "virus.": {
+    "offset": 481,
     "length": 4
   }
 }

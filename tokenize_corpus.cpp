@@ -15,26 +15,9 @@
 #include <unistd.h>
 #endif
 #include "tokenizer.h"
+#include "utilities.h"
 
 using namespace std;
-
-// Function to create directory if it doesn't exist (C++11 compatible)
-bool create_directory_if_not_exists(const string &path)
-{
-#ifdef _WIN32
-    if (_access(path.c_str(), 0) != 0)
-    {
-        return _mkdir(path.c_str()) == 0 || system(("mkdir \"" + path + "\" 2>nul").c_str()) == 0;
-    }
-#else
-    struct stat info;
-    if (stat(path.c_str(), &info) != 0)
-    {
-        return system(("mkdir -p \"" + path + "\"").c_str()) == 0;
-    }
-#endif
-    return true; // Directory already exists
-}
 
 // Function to copy file from source to destination
 bool copy_file(const string &source, const string &destination)
@@ -55,64 +38,6 @@ bool copy_file(const string &source, const string &destination)
 
     dst << src.rdbuf();
     return true;
-}
-
-// Function to get all files in a directory (C++11 compatible)
-vector<string> get_files_in_directory(const string &directory)
-{
-    vector<string> files;
-
-#ifdef _WIN32
-    WIN32_FIND_DATAA findFileData; // Use ASCII version explicitly
-    string searchPath = directory + "\\*";
-    HANDLE hFind = FindFirstFileA(searchPath.c_str(), &findFileData); // Use ASCII version
-
-    if (hFind != INVALID_HANDLE_VALUE)
-    {
-        do
-        {
-            if (!(findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
-            {
-                files.push_back(directory + "/" + findFileData.cFileName);
-            }
-        } while (FindNextFileA(hFind, &findFileData) != 0); // Use ASCII version
-        FindClose(hFind);
-    }
-#else
-    string command = "find \"" + directory + "\" -maxdepth 1 -type f 2>/dev/null";
-    FILE *pipe = popen(command.c_str(), "r");
-
-    if (pipe)
-    {
-        char buffer[512];
-        while (fgets(buffer, sizeof(buffer), pipe) != nullptr)
-        {
-            string filepath = buffer;
-            // Remove newline
-            if (!filepath.empty() && filepath.back() == '\n')
-            {
-                filepath.pop_back();
-            }
-            if (!filepath.empty())
-            {
-                files.push_back(filepath);
-            }
-        }
-        pclose(pipe);
-    }
-#endif
-
-    return files;
-}
-
-unordered_set<string> load_stopwords(const string &stopwords_file)
-{
-    unordered_set<string> stopwords;
-    ifstream file(stopwords_file);
-    string word;
-    while (file >> word)
-        stopwords.insert(word);
-    return stopwords;
 }
 
 // Main function as required by the assignment
@@ -139,34 +64,58 @@ void build_vocab(string corpus_dir, string stopwords_file, string vocab_dir)
         cerr << "Warning: Failed to copy stopwords file to: " << stopwords_destination << endl;
     }
 
-    // Build vocabulary from corpus
+    // Build vocabulary from JSON corpus
     set<string> vocab;
+
+    // Find JSON corpus file in the corpus directory
     vector<string> corpus_files = get_files_in_directory(corpus_dir);
+    string corpus_file_path;
 
-    if (corpus_files.empty())
-    {
-        cerr << "Warning: No files found in corpus directory: " << corpus_dir << endl;
-    }
-
+    // Look for JSON file in corpus directory
     for (const string &file_path : corpus_files)
     {
-        ifstream file(file_path);
-        if (!file.is_open())
+        if (file_path.find(".json") != string::npos)
         {
-            cerr << "Warning: Cannot open file: " << file_path << endl;
+            corpus_file_path = file_path;
+            break;
+        }
+    }
+
+    if (corpus_file_path.empty())
+    {
+        cerr << "Error: No JSON corpus file found in directory: " << corpus_dir << endl;
+        return;
+    }
+
+    // Open the JSON corpus file
+    ifstream corpus_file(corpus_file_path);
+    if (!corpus_file.is_open())
+    {
+        cerr << "Error: Cannot open corpus file: " << corpus_file_path << endl;
+        return;
+    }
+
+    string json_line;
+    int doc_count = 0;
+    while (getline(corpus_file, json_line))
+    {
+        if (json_line.empty())
+            continue;
+
+        // Parse JSON document
+        Document doc = parse_json_document(json_line);
+        if (doc.doc_id.empty() || doc.content.empty())
+        {
+            cerr << "Warning: Skipping invalid JSON line" << endl;
             continue;
         }
 
-        string line, content;
-        while (getline(file, line))
-        {
-            content += line + " ";
-        }
-
-        vector<string> tokens = tokenize(content, stopwords);
+        // Tokenize the content
+        vector<string> tokens = tokenize(doc.content, stopwords);
         vocab.insert(tokens.begin(), tokens.end());
-        file.close();
+        doc_count++;
     }
+    corpus_file.close();
 
     // Save vocabulary to vocab.txt
     string vocab_file_path = vocab_dir + "/vocab.txt";
@@ -183,7 +132,7 @@ void build_vocab(string corpus_dir, string stopwords_file, string vocab_dir)
     }
     out.close();
 
-    cout << "Vocabulary created with " << vocab.size() << " unique tokens." << endl;
+    cout << "Vocabulary created from " << doc_count << " documents with " << vocab.size() << " unique tokens." << endl;
     cout << "Files created:" << endl;
     cout << "  - " << vocab_file_path << endl;
     cout << "  - " << stopwords_destination << endl;
